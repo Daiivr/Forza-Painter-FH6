@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.6.8.1 / 2026-05-28
+
+- Updated the app version to `v1.6.8.1`; release packages now use `forza-painter-fh6-v1.6.8.1.exe`.
+
+### Sidebar & step indicators
+- Redrew the sidebar nav icons (Generate JSON, Import, Tutorial) as antialiased PIL renders at 4× supersample then downscaled with LANCZOS. The Tutorial glyph now reads as an open book instead of the previous question-mark badge, the Generate glyph uses `{ }` curly braces with a center sparkle, and the Import glyph is a downward arrow into a notched inbox. Hover and active states swap the pre-rendered tinted variant of the same icon rather than re-coloring individual canvas items.
+- Replaced the thin-outline step number badges (Paso 1 / 2 / 3 on both the Generate JSON and Import tabs) with solid accent-blue discs that have a soft outer halo and white bold numerals, supersampled and downscaled for crisp edges at the same 24 px footprint.
+
+### Themed warning alerts on the Import tab
+- Added a borderless themed warning dialog (`_show_themed_alert`) that matches the existing dark-mode modal chrome: traffic-light dots, dark panel, hairline divider, warning-triangle glyph, accent-blue action button. Replaces the prior native `messagebox.showwarning` calls.
+- Plays the standard Windows warning chime (`winsound.MessageBeep(MB_ICONEXCLAMATION)`) when the alert spawns. Non-Windows platforms fall back to the Tk bell.
+- `Return` / `Escape` and the close button all dismiss the alert; the action button is focused on open so the alert can be cleared from the keyboard.
+
+### Import validation flow
+- Validating the import inputs now happens before the import log modal opens. Previously, clicking "Importar JSON" with a missing template layer count opened the heavy log modal first, which disabled the root window on Windows and left the layer-count entry briefly unresponsive after the modal was closed.
+- "No JSON files selected", "Template layer count is required", and "No live supported game process is selected" each now surface as the themed alert with the appropriate translated message instead of writing to the log area that the Import tab hides.
+- After the missing-layer-count alert is dismissed, the layer-count entry is auto-focused so the user can start typing immediately without having to click it.
+
+### Modal behavior on Windows
+- All three modals (warning alert, quality settings, import log) now register their own Windows taskbar entry. A new helper (`_ensure_window_in_taskbar`) flips the borderless Toplevel's extended style from `WS_EX_TOOLWINDOW` to `WS_EX_APPWINDOW` via ctypes so the modal shows up as its own item the user can click from the taskbar to bring back to the front.
+- All three modals set `-topmost` so they float above the main window for the duration of their modality.
+- All three modals re-activate the main window with `root.lift()` + `root.focus_force()` after dismissal, eliminating the "can't type until I alt-tab away and back" issue that the `root.attributes("-disabled", True)` modality trick caused on Windows.
+- Added an `_on_root_activated` handler bound to the root window's `<FocusIn>` and `<Map>` events that re-raises the currently active modal whenever the main app is re-activated from the taskbar, so the modal does not get stuck behind the root window.
+- Removed `transient(self.root)` from the quality settings, import log, and warning alert toplevels. The transient flag was telling Windows these were tool windows and hiding them from the taskbar, which conflicted with the dedicated taskbar-entry behavior above.
+
 ## v1.6.8 / 2026-05-28
 
 - Updated the app version to `v1.6.8`; release packages now use `forza-painter-fh6-v1.6.8.exe`.
