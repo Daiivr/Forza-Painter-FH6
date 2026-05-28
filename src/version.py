@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-APP_DISPLAY_NAME = "forza-painter FH6"
+APP_DISPLAY_NAME = "Forza-Painter FH6"
 __version__ = "1.6.8"
 
 

@@ -33,6 +33,12 @@ if (Test-Path $BuildRoot) {
 }
 New-Item -ItemType Directory -Path $BuildRoot | Out-Null
 
+$IconPng = Join-Path $Root "assets\imgs\brand_icon.png"
+$IconIco = Join-Path $BuildRoot "brand_icon.ico"
+if (Test-Path $IconPng) {
+    & $Python -c "from PIL import Image; img=Image.open(r'$IconPng').convert('RGBA'); img.save(r'$IconIco', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+}
+
 $common = @(
     "--noconfirm",
     "--clean",
@@ -50,7 +56,12 @@ $common = @(
     "--hidden-import", "preprocess.luma"
 )
 
-$appArgs = $common + @(
+$iconArgs = @()
+if (Test-Path $IconIco) {
+    $iconArgs = @("--icon", $IconIco)
+}
+
+$appArgs = $common + $iconArgs + @(
     "--windowed",
     "--name", "forza-painter-fh6",
     "--add-data", "$(Join-Path $Root 'config');config",

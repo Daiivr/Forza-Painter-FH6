@@ -351,14 +351,13 @@ def preprocess_input_image(
 # Output discovery
 # ---------------------------------------------------------------------------
 
-def generated_jsons(image_path: str | Path) -> list[Path]:
+def generated_jsons(image_path: str | Path, output_dir: str | Path | None = None) -> list[Path]:
     image_path = Path(image_path)
     candidates: list[Path] = []
-    output_base = generator_output_base(image_path)
-    folders = {
-        image_path.parent / image_path.stem,
-        output_base.parent / output_base.name,
-    }
+    output_base = generator_output_base(image_path, output_dir)
+    folders = {output_base.parent / output_base.name}
+    if output_dir is None:
+        folders.add(image_path.parent / image_path.stem)
     for folder in folders:
         if folder.exists():
             candidates.extend(folder.rglob("*.json"))
@@ -370,10 +369,12 @@ def generated_jsons(image_path: str | Path) -> list[Path]:
         output_base.name.split(".", 1)[0],
     }
     patterns = {f"{prefix}*.json" for prefix in prefixes if prefix}
+    pattern_folders = {output_base.parent}
+    if output_dir is None:
+        pattern_folders.add(image_path.parent)
     for pattern in patterns:
-        candidates.extend(image_path.parent.glob(pattern))
-        if output_base.parent != image_path.parent:
-            candidates.extend(output_base.parent.glob(pattern))
+        for folder in pattern_folders:
+            candidates.extend(folder.glob(pattern))
     return sorted(set(candidates), key=lambda p: p.stat().st_mtime, reverse=True)
 
 
@@ -421,8 +422,10 @@ def generated_preview_files(image_path: str | Path) -> list[Path]:
     )
 
 
-def generator_output_base(image_path: str | Path) -> Path:
+def generator_output_base(image_path: str | Path, output_dir: str | Path | None = None) -> Path:
     image_path = Path(image_path)
+    if output_dir:
+        return Path(output_dir) / _name_without_suffix(image_path)
     return image_path.with_name(_name_without_suffix(image_path))
 
 
@@ -435,7 +438,7 @@ def _name_without_suffix(path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 def build_generator_command(
-    image_path: str | Path, setting: SettingProfile
+    image_path: str | Path, setting: SettingProfile, output_dir: str | Path | None = None
 ) -> list[str]:
     image_path = Path(image_path)
     return [
@@ -444,7 +447,7 @@ def build_generator_command(
         "-settings",
         str(setting.path),
         "-output",
-        str(generator_output_base(image_path)),
+        str(generator_output_base(image_path, output_dir)),
         "-preview",
         str(generator_preview_path(image_path)),
     ]

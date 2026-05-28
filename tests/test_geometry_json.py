@@ -45,6 +45,13 @@ class TestNormalizeGeometryPayload:
         assert result["shapes"][1]["type"] == ShapeType.ROTATED_ELLIPSE
         assert result["shapes"][1]["data"] == [50, 50, 30, 20, 45]
 
+    def test_rotated_ellipse_preserves_float_size(self):
+        payload = [
+            {"type": 16, "data": [50.1, 50.2, 30.75, 20.25, 45], "color": [0, 255, 0, 128]},
+        ]
+        result = normalize_geometry_payload(payload)
+        assert result["shapes"][1]["data"] == [50, 50, 30.75, 20.25, 45]
+
     def test_unsupported_shape_is_filtered(self):
         payload = [
             {"type": 99, "data": [0, 0, 10, 10], "color": [0, 0, 0, 255]},
