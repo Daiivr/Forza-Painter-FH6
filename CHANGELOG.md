@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.7.0 / 2026-06-02
+
+- Updated the app version to `v1.7.0`; release packages now use `forza-painter-fh6-v1.7.0.exe`.
+
+### Market presets
+- Added an Import-tab-only `Market` button that opens an in-app preset market instead of sending the user straight to a browser.
+- Added market API integration for browsing presets from painter6.com, previewing the selected design image, opening the selected preset on the website, downloading its geometry JSON, and automatically adding the downloaded JSON to the Import tab so it is ready to import into the game.
+- Market downloads now reuse an existing valid JSON from `runtime/market-downloads` instead of downloading the same preset again.
+- Existing market JSON files are validated against the preset hash when available, and reused downloads now show their own translated confirmation message.
+- Switching languages while the Market modal is open now refreshes preset details, counts, empty descriptions, notices, and the translated Market button immediately.
+- Redesigned the market modal with a larger two-column layout, a preset list with item counts, an image preview, title/author details, layer/template stats, download/like/comment counts, tags, description, and a persistent `Download JSON` action.
+- Improved market search so normal searches match title, author, description, and tags, while `#tag` searches only match real tags instead of matching the same word in preset titles.
+- Kept the market footer focused on user-facing confirmation messages, while detailed download paths are written to the logs.
+
+### Quality settings
+- Removed the duplicate lower add-image prompt from the Generate JSON image picker, since the primary `Add images` button already covers that action.
+- Added a cleaner selected-layer summary to the quality card so the current output layer count is visible without the clipped input-style rendering.
+- Fixed the quality profile selector after the layout changes so its dropdown opens normally again.
+
+### Modals and polish
+- Added an accent border shell around themed modals so dialogs stand out clearly from the dark main window.
+- Adjusted modal topmost behavior on Windows so app dialogs stay above the Forza-Painter window when active, but no longer float above unrelated windows after the user switches away.
+- Improved modal sizing and placement for the market, quality settings, warning, and import-log dialogs.
+
+### Localization
+- Added translations for the new market UI, image actions, quality-layer summary, modal controls, and status messages across the supported languages.
+
 ## v1.6.8.1 / 2026-05-28
 
 - Updated the app version to `v1.6.8.1`; release packages now use `forza-painter-fh6-v1.6.8.1.exe`.

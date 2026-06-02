@@ -33,6 +33,7 @@ UPDATE_CHANGELOG_URL = (
     "https://raw.githubusercontent.com/Daiivr/Forza-Painter-FH6/main/CHANGELOG.md"
 )
 UPDATE_RELEASE_URL = "https://github.com/Daiivr/Forza-Painter-FH6/releases/latest"
+MARKET_URL = "https://painter6.com"
 
 
 # ---------------------------------------------------------------------------

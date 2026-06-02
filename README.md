@@ -10,17 +10,18 @@
 
 <p align="center">
   <a href="README.md">English</a> ·
+  <a href="README.es-ES.md">Español</a> ·
   <a href="README.zh-CN.md">中文</a> ·
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
 <p align="center">
-  <code>v1.6.8</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
+  <code>v1.7.0</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
 </p>
 
 Convert PNG/JPG/BMP images into Forza Horizon 6 Vinyl Group layers. The app handles generation, preview, and import in one desktop window; normal users do not need Python, `.venv`, batch files, or manual memory addresses.
 
-> **Download the EXE:** get `forza-painter-fh6-v1.6.8.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) and run it directly.
+> **Download the EXE:** get `forza-painter-fh6-v1.7.0.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) and run it directly.
 
 > **If the result looks blurry:** raise `Random samples` first. Values above **200000** usually make a major quality difference; higher values are clearer but take much longer to generate.
 
@@ -36,7 +37,7 @@ Convert PNG/JPG/BMP images into Forza Horizon 6 Vinyl Group layers. The app hand
 
 ## Quick Start
 
-1. Download `forza-painter-fh6-v1.6.8.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases).
+1. Download `forza-painter-fh6-v1.7.0.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases).
 2. Put the EXE in a normal writable folder, for example `Desktop\forza-painter-fh6`.
 3. Double-click the EXE. For FH6 import, run it as administrator if Windows blocks process access.
 4. In FH6, open `Create Vinyl Group` / `Vinyl Group Editor`, load a sphere template, then `Ungroup` it.
@@ -140,6 +141,18 @@ These folders can be deleted when the app is closed if you want to reset local r
 ## Changelog
 
 Only versioned release entries are kept here. See [CHANGELOG.md](CHANGELOG.md) for the app update prompt changelog.
+
+### v1.7.0 / 2026-06-02
+
+- Updated the app version to `v1.7.0`; release packages now use `forza-painter-fh6-v1.7.0.exe`.
+- Added an in-app Market on the Import tab for browsing painter6.com presets, previewing designs, opening the selected preset in the browser, downloading geometry JSON, and automatically adding it to the Import tab.
+- Market downloads now reuse an existing valid JSON from `runtime/market-downloads` instead of downloading the same preset again.
+- Existing market JSON files are validated against the preset hash when available, and reused downloads now show their own translated confirmation message.
+- Switching languages while the Market modal is open now refreshes preset details, counts, empty descriptions, notices, and the translated Market button immediately.
+- Improved Market search, including strict `#tag` searches that only match real tags.
+- Cleaned up the Generate JSON image picker and quality card, including the selected-layer summary.
+- Added clearer accent borders and better topmost behavior for themed modals.
+- Added translations for the new market, image, quality, modal, and status text.
 
 ### v1.6.8 / 2026-05-28
 

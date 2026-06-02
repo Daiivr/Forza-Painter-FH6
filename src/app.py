@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
@@ -14,6 +15,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 from collections import deque
@@ -43,6 +45,7 @@ from app_config import (
     UPDATE_VERSION_URL,
     UPDATE_CHANGELOG_URL,
     UPDATE_RELEASE_URL,
+    MARKET_URL,
     UPDATE_CHECK_TIMEOUT_SECONDS,
     Theme,
 )
@@ -596,6 +599,11 @@ class ThemedDropdown(Frame):
         top.overrideredirect(True)
         top.configure(bg=Theme.ACCENT_DARK)
         top.transient(self.winfo_toplevel())
+        try:
+            owner = self.winfo_toplevel()
+            top.attributes("-topmost", bool(owner.attributes("-topmost")))
+        except Exception:
+            pass
 
         panel = Frame(top, bg=Theme.PANEL_HEADER)
         self.dropdown_panel = panel
@@ -627,8 +635,11 @@ class ThemedDropdown(Frame):
             top.focus_force()
         except Exception:
             pass
+        try:
+            top.grab_set()
+        except Exception:
+            pass
         top.bind("<Escape>", lambda _e: self._close_dropdown(), add="+")
-        top.bind("<FocusOut>", lambda _e: self.after(120, self._close_if_focus_left), add="+")
         self._track_dropdown_position()
 
     def _position_dropdown(self):
@@ -700,6 +711,14 @@ class ThemedDropdown(Frame):
                 pass
             self.position_job = None
         if top is not None:
+            try:
+                top.grab_release()
+            except Exception:
+                pass
+            try:
+                top.attributes("-topmost", False)
+            except Exception:
+                pass
             try:
                 top.destroy()
             except Exception:
@@ -777,6 +796,23 @@ class App:
         self.import_log_modal = None
         self.import_modal_log = None
         self.import_modal_progress = None
+        self.market_modal = None
+        self.market_list = None
+        self.market_preview_label = None
+        self.market_preview_item_id = None
+        self.market_notice = StringVar(value="")
+        self.market_search = StringVar()
+        self.market_detail_title = StringVar(value="")
+        self.market_detail_author = StringVar(value="")
+        self.market_detail_layers = StringVar(value="")
+        self.market_detail_stats = StringVar(value="")
+        self.market_detail_tags = StringVar(value="")
+        self.market_detail_description = StringVar(value="")
+        self.market_items = []
+        self.market_download_button = None
+        self.market_open_button = None
+        self.market_notice_key = None
+        self.market_notice_payload = {}
         self.quality_settings_modal = None
         self.quality_modal_description = None
         self.active_modal = None
@@ -788,6 +824,8 @@ class App:
         self.status.set(tr(self.lang, "ready"))
         self._build()
         self.status.trace_add("write", lambda *_: self._on_status_changed())
+        self.use_custom_settings.trace_add("write", lambda *_: self._update_quality_summary())
+        self.custom_stop_at.trace_add("write", lambda *_: self._update_quality_summary())
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         # When the app is re-activated from the taskbar / alt-tab, any open
         # modal (borderless Toplevel) can be left behind the root. Re-raise it
@@ -1719,6 +1757,8 @@ class App:
             self._hide_quality_settings_modal()
             if hasattr(self, "profile_combo"):
                 self.profile_combo._close_dropdown()
+        if key != "import":
+            self._hide_market_modal()
         for section_key, frame in self.section_frames.items():
             try:
                 frame.pack_forget()
@@ -1731,6 +1771,11 @@ class App:
             self.section_title.config(text=self._section_title_text())
         if hasattr(self, "section_subtitle"):
             self.section_subtitle.config(text=self._section_subtitle_text())
+        if hasattr(self, "market_button"):
+            if key == "import":
+                self.market_button.pack(side=RIGHT, padx=(12, 8), ipady=5)
+            else:
+                self.market_button.pack_forget()
         for nav_key, item in self.nav_items.items():
             selected = nav_key == key
             container = item["container"]
@@ -1810,6 +1855,11 @@ class App:
         self.process_combo.pack(side=LEFT, padx=(0, 8))
         self._style_combobox_popdown(self.process_combo)
         self._button(proc_row, "refresh", self.refresh_processes).pack(side=LEFT)
+        self.market_button = self._primary_button(
+            proc_row, "market", self.open_market_modal,
+            variant="accent", padx=18, pady=6,
+            font=(Theme.FONT_FAMILY, 10, "bold"),
+        )
 
     # ---------------------------------------------------------------------- card
     def _card(self, parent, title_key, step=None, side_pack=None, eyebrow=None):
@@ -1910,33 +1960,34 @@ class App:
         self.image_list = Listbox(list_inner, height=3, borderwidth=0, highlightthickness=0)
         self.image_list.pack(fill=X, padx=10, pady=8)
         self.image_list.bind("<<ListboxSelect>>", self._preview_selected_image)
-        self.image_empty_hint = Label(list_inner, text=tr(self.lang, "add_images") + " —",
-                                      bg=Theme.INPUT, fg=Theme.SUBTLE,
-                                      font=(Theme.FONT_FAMILY, 9, "italic"))
-        self._update_image_empty_state()
 
         quality_border = Frame(scroll_inner, bg=Theme.BORDER)
         quality_border.pack(fill=X, pady=(0, 12))
         quality_panel = Frame(quality_border, bg=Theme.PANEL)
         quality_panel.pack(fill=X, padx=1, pady=1)
         quality_inner = Frame(quality_panel, bg=Theme.PANEL)
-        quality_inner.pack(fill=X, padx=22, pady=14)
+        quality_inner.pack(fill=X, padx=22, pady=16)
         quality_copy = Frame(quality_inner, bg=Theme.PANEL, width=420)
         quality_copy.pack(side=LEFT, fill=BOTH, expand=True)
-        quality_copy.pack_propagate(False)
         self.setting_description = Label(
             quality_copy, text="", anchor="w", justify=LEFT,
             wraplength=410, fg=Theme.MUTED, bg=Theme.PANEL,
             font=(Theme.FONT_FAMILY, 9),
         )
-        self.setting_description.pack(fill=BOTH, expand=True)
-        quality_button_box = Frame(quality_inner, bg=Theme.PANEL, width=150, height=52)
+        self.setting_description.pack(fill=X)
+        self.quality_layers_label = Label(
+            quality_copy, text="", anchor="w", justify=LEFT,
+            fg=Theme.ACCENT_SOFT, bg=Theme.PANEL,
+            font=(Theme.FONT_FAMILY, 9, "bold"),
+        )
+        self.quality_layers_label.pack(fill=X, pady=(8, 0))
+        quality_button_box = Frame(quality_inner, bg=Theme.PANEL, width=170, height=56)
         quality_button_box.pack(side=RIGHT, padx=(16, 0))
         quality_button_box.pack_propagate(False)
         self._primary_button(
             quality_button_box, "quality_settings", self.open_quality_settings_modal, variant="accent",
             padx=10, pady=6, font=(Theme.FONT_FAMILY, 10, "bold"),
-            wraplength=118, justify="center"
+            wraplength=138, justify="center"
         ).pack(fill=BOTH, expand=True)
 
         # ----- card 4: generate CTA (pinned below scroll, in left_col) -----
@@ -1971,12 +2022,6 @@ class App:
         try:
             if top is not None and top.winfo_exists():
                 top.deiconify()
-                top.lift()
-                top.focus_force()
-                try:
-                    top.attributes("-topmost", True)
-                except Exception:
-                    pass
                 self._ensure_window_in_taskbar(top)
                 self._activate_modal(top)
                 return
@@ -1999,8 +2044,7 @@ class App:
         # taskbar entry below instead.
         top.protocol("WM_DELETE_WINDOW", self._hide_quality_settings_modal)
 
-        shell = Frame(top, bg=Theme.BG)
-        shell.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        shell = self._modal_shell(top)
         content_shell = Frame(shell, bg=Theme.BG)
         content_shell.pack(fill=BOTH, expand=True, padx=18, pady=16)
 
@@ -2105,36 +2149,50 @@ class App:
         self._update_setting_description()
         self._center_toplevel(top, 760, 650)
         top.deiconify()
-        top.lift()
-        try:
-            top.attributes("-topmost", True)
-        except Exception:
-            pass
         self._ensure_window_in_taskbar(top)
         self._activate_modal(top)
         top.focus_force()
 
     def _activate_modal(self, top):
         self.active_modal = top
-        try:
-            top.lift()
-            top.focus_force()
-        except Exception:
-            pass
+        self._raise_modal(top)
         if os.name == "nt":
             try:
                 self.root.attributes("-disabled", True)
             except Exception:
                 pass
         try:
+            top.grab_set()
+        except Exception:
+            pass
+
+    def _raise_modal(self, top):
+        try:
             top.lift()
             top.focus_force()
         except Exception:
             pass
         try:
-            top.grab_set()
+            top.attributes("-topmost", True)
+            top.after(250, lambda: self._clear_topmost(top))
         except Exception:
             pass
+
+    def _clear_topmost(self, top):
+        try:
+            if top is not None and top.winfo_exists():
+                top.attributes("-topmost", False)
+        except Exception:
+            pass
+
+    def _modal_shell(self, top):
+        outer = Frame(top, bg=Theme.ACCENT, highlightthickness=1, highlightbackground=Theme.ACCENT_SOFT)
+        outer.pack(fill=BOTH, expand=True)
+        inner = Frame(outer, bg=Theme.BG)
+        inner.pack(fill=BOTH, expand=True, padx=2, pady=2)
+        shell = Frame(inner, bg=Theme.BG)
+        shell.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        return shell
 
     def _on_root_activated(self, event):
         """If the user re-activates the main window (clicked taskbar icon,
@@ -2274,7 +2332,7 @@ class App:
         row.pack(fill=X)
         self._label(row, "json_files", font=(Theme.FONT_FAMILY, 10, "bold")).pack(side=LEFT)
         self._button(row, "add_json", self.add_json).pack(side=RIGHT)
-        self._button(row, "remove_json", self.remove_selected_json).pack(side=RIGHT, padx=(8, 0))
+        self._button(row, "remove_json", self.remove_selected_json).pack(side=RIGHT, padx=(8, 8))
         self._button(row, "use_outputs", self.use_generated_outputs).pack(side=RIGHT, padx=8)
         list_wrap = Frame(card3, bg=Theme.BORDER)
         list_wrap.pack(fill=BOTH, expand=True, pady=(10, 0))
@@ -2477,8 +2535,7 @@ class App:
         # makes Windows treat the window as a tool window and hides it from
         # the taskbar. We want an independent taskbar entry instead.
 
-        shell = Frame(top, bg=Theme.BG)
-        shell.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        shell = self._modal_shell(top)
 
         # Window-chrome header (matches the import log modal style).
         header = Frame(shell, bg=Theme.PANEL_HEADER)
@@ -2540,13 +2597,8 @@ class App:
         h = max(200, top.winfo_reqheight())
         self._center_toplevel(top, w, h)
         top.deiconify()
-        top.lift()
-        # Float above the root and register a taskbar entry so the user can
-        # always navigate back to the alert from anywhere on Windows.
-        try:
-            top.attributes("-topmost", True)
-        except Exception:
-            pass
+        # Raise once above the root and register a taskbar entry so the user
+        # can navigate back to the alert without making it global always-on-top.
         self._ensure_window_in_taskbar(top)
         # Full modal blocking: grab_set + disable the root window so no Tk
         # widget OR the OS-level window chrome can be interacted with until
@@ -2576,12 +2628,6 @@ class App:
             try:
                 if self.import_log_modal.winfo_exists():
                     self.import_log_modal.deiconify()
-                    self.import_log_modal.lift()
-                    self.import_log_modal.focus_force()
-                    try:
-                        self.import_log_modal.attributes("-topmost", True)
-                    except Exception:
-                        pass
                     self._ensure_window_in_taskbar(self.import_log_modal)
                     self._activate_modal(self.import_log_modal)
                     return
@@ -2621,8 +2667,7 @@ class App:
                 pass
 
         top.protocol("WM_DELETE_WINDOW", close_modal)
-        shell = Frame(top, bg=Theme.BG)
-        shell.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        shell = self._modal_shell(top)
         content_shell = Frame(shell, bg=Theme.BG)
         content_shell.pack(fill=BOTH, expand=True, padx=18, pady=16)
 
@@ -2681,11 +2726,6 @@ class App:
         self._apply_dark_theme_recursive(top)
         self._center_toplevel(top, 920, 380)
         top.deiconify()
-        top.lift()
-        try:
-            top.attributes("-topmost", True)
-        except Exception:
-            pass
         self._ensure_window_in_taskbar(top)
         self._activate_modal(top)
 
@@ -2746,6 +2786,7 @@ class App:
             self.preview_label.config(text=tr(self.lang, "preview_hint"))
             if hasattr(self, "import_preview_label"):
                 self.import_preview_label.config(text=tr(self.lang, "preview_hint"))
+        self._update_quality_summary()
         if hasattr(self, "advanced_button"):
             self.advanced_button.config(text=tr(self.lang, "hide_advanced" if self.advanced_visible else "show_advanced"))
         if self.import_log_modal is not None:
@@ -2757,6 +2798,12 @@ class App:
         if self.quality_settings_modal is not None:
             try:
                 self.quality_settings_modal.title(tr(self.lang, "quality_settings"))
+            except Exception:
+                pass
+        if self.market_modal is not None:
+            try:
+                self.market_modal.title(tr(self.lang, "market_title"))
+                self._refresh_market_language()
             except Exception:
                 pass
         self._refresh_profile_combo()
@@ -2788,6 +2835,28 @@ class App:
             self.custom_mutated_samples.set(values.get("mutatedSamples", "1000"))
             self.custom_save_at.set(values.get("saveAt", values.get("stopAt", "3000")))
             self.custom_preprocess_mode.set(values.get("preprocessMode", "none"))
+        self._update_quality_summary()
+
+    def _format_layers_value(self, value):
+        try:
+            return str(int(str(value).replace(",", "").strip()))
+        except Exception:
+            return str(value or "").strip() or "-"
+
+    def _current_quality_layers(self):
+        if self.use_custom_settings.get() == "1":
+            return self.custom_stop_at.get()
+        item = self._selected_setting()
+        if item:
+            return item.get("values", {}).get("stopAt", self.custom_stop_at.get())
+        return self.custom_stop_at.get()
+
+    def _update_quality_summary(self):
+        label = getattr(self, "quality_layers_label", None)
+        if label is None:
+            return
+        layers = self._format_layers_value(self._current_quality_layers())
+        label.config(text=tr(self.lang, "quality_layers_summary").format(layers=layers))
 
     def _sync_custom_state(self):
         state = "normal" if self.use_custom_settings.get() == "1" else "disabled"
@@ -2893,17 +2962,7 @@ class App:
         self.json_list.delete(0, END)
         for path in self.json_files:
             self.json_list.insert(END, str(path))
-        self._update_image_empty_state()
         self._update_json_empty_state()
-
-    def _update_image_empty_state(self):
-        hint = getattr(self, "image_empty_hint", None)
-        if hint is None:
-            return
-        if self.images:
-            hint.pack_forget()
-        else:
-            hint.pack(anchor="w", padx=14, pady=(2, 8))
 
     def _update_json_empty_state(self):
         hint = getattr(self, "json_empty_hint", None)
@@ -3556,6 +3615,507 @@ class App:
     def open_preset_folder(self):
         USER_SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
         os.startfile(USER_SETTINGS_DIR)
+
+    def open_market_modal(self):
+        top = self.market_modal
+        try:
+            if top is not None and top.winfo_exists():
+                top.deiconify()
+                self._ensure_window_in_taskbar(top)
+                self._activate_modal(top)
+                return
+        except Exception:
+            pass
+
+        top = Toplevel(self.root)
+        self.market_modal = top
+        top.withdraw()
+        top.title(tr(self.lang, "market_title"))
+        top.configure(bg=Theme.BORDER)
+        try:
+            top.overrideredirect(True)
+        except Exception:
+            pass
+        top.geometry("960x740")
+        top.minsize(840, 620)
+        top.protocol("WM_DELETE_WINDOW", self._hide_market_modal)
+
+        shell = self._modal_shell(top)
+        content = Frame(shell, bg=Theme.BG)
+        content.pack(fill=BOTH, expand=True, padx=18, pady=16)
+
+        header = Frame(content, bg=Theme.BG)
+        header.pack(fill=X, pady=(0, 12))
+        title = self._label(header, "market_title", anchor="w", font=(Theme.FONT_FAMILY, 14, "bold"))
+        title.pack(side=LEFT)
+        self._button(header, "close", self._hide_market_modal).pack(side=RIGHT)
+        self.market_open_button = self._button(header, "market_open_website", self.open_selected_market_website)
+        self.market_open_button.pack(side=RIGHT, padx=(0, 8))
+        self._bind_modal_drag(top, header)
+
+        toolbar = Frame(content, bg=Theme.BG)
+        toolbar.pack(fill=X, pady=(0, 10))
+        self._label(toolbar, "market_search", bg=Theme.BG, fg=Theme.SUBTLE,
+                    font=(Theme.FONT_FAMILY, 9, "bold")).pack(side=LEFT, padx=(0, 8))
+        search_wrap = Frame(toolbar, bg=Theme.BORDER)
+        search_wrap.pack(side=LEFT, fill=X, expand=True)
+        search_entry = Entry(search_wrap, textvariable=self.market_search)
+        search_entry.pack(fill=X, padx=1, pady=1, ipady=5)
+        search_entry.bind("<Return>", lambda _e: self.refresh_market_items())
+        self._button(toolbar, "market_refresh", self.refresh_market_items).pack(side=LEFT, padx=(10, 0), ipady=4)
+
+        body_border = Frame(content, bg=Theme.BORDER)
+        body_border.pack(fill=BOTH, expand=True)
+        body = Frame(body_border, bg=Theme.PANEL)
+        body.pack(fill=BOTH, expand=True, padx=1, pady=1)
+
+        body_inner = Frame(body, bg=Theme.PANEL)
+        body_inner.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+        list_panel = Frame(body_inner, bg=Theme.PANEL, width=390)
+        list_panel.pack(side=LEFT, fill=BOTH, padx=(0, 12))
+        list_panel.pack_propagate(False)
+        list_header = Frame(list_panel, bg=Theme.PANEL)
+        list_header.pack(fill=X, pady=(0, 8))
+        self._label(list_header, "market_presets", bg=Theme.PANEL, fg=Theme.TEXT,
+                    font=(Theme.FONT_FAMILY, 10, "bold")).pack(side=LEFT)
+        self.market_count_label = Label(
+            list_header, text="", bg=Theme.PANEL, fg=Theme.SUBTLE,
+            font=(Theme.FONT_FAMILY, 9, "bold"),
+        )
+        self.market_count_label.pack(side=RIGHT)
+        self.market_list = Listbox(list_panel, height=12, borderwidth=0, highlightthickness=0)
+        self.market_list.pack(fill=BOTH, expand=True)
+        self.market_list.bind("<<ListboxSelect>>", self._update_market_status)
+
+        detail_panel = Frame(body_inner, bg=Theme.PANEL)
+        detail_panel.pack(side=LEFT, fill=BOTH, expand=True)
+
+        preview_panel = Frame(detail_panel, bg=Theme.BORDER, height=260)
+        preview_panel.pack(fill=X, pady=(0, 12))
+        preview_panel.pack_propagate(False)
+        preview_inner = Frame(preview_panel, bg=Theme.PREVIEW_BG)
+        preview_inner.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        self.market_preview_label = Label(
+            preview_inner, text=tr(self.lang, "market_preview_hint"),
+            bg=Theme.PREVIEW_BG, fg=Theme.MUTED,
+            anchor="center", justify="center",
+            wraplength=430, font=(Theme.FONT_FAMILY, 10),
+        )
+        self.market_preview_label.pack(fill=BOTH, expand=True, padx=8, pady=8)
+
+        detail_actions = Frame(detail_panel, bg=Theme.PANEL)
+        detail_actions.pack(side=BOTTOM, fill=X, pady=(12, 0))
+        Label(
+            detail_actions, textvariable=self.market_notice,
+            bg=Theme.PANEL, fg=Theme.MUTED,
+            anchor="w", justify=LEFT,
+            wraplength=300,
+            font=(Theme.FONT_FAMILY, 9),
+        ).pack(side=LEFT, fill=X, expand=True, padx=(0, 12))
+        button_box = Frame(detail_actions, bg=Theme.PANEL, width=180, height=42)
+        button_box.pack(side=RIGHT)
+        button_box.pack_propagate(False)
+        self.market_download_button = self._primary_button(
+            button_box, "market_download", self.download_selected_market_json,
+            variant="accent", padx=8, pady=7,
+            font=(Theme.FONT_FAMILY, 10, "bold"),
+            wraplength=150, justify="center",
+        )
+        self.market_download_button.pack(fill=BOTH, expand=True)
+
+        detail_card_border = Frame(detail_panel, bg=Theme.BORDER)
+        detail_card_border.pack(fill=BOTH, expand=True)
+        detail_card = Frame(detail_card_border, bg=Theme.PANEL_ALT)
+        detail_card.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        detail_content = Frame(detail_card, bg=Theme.PANEL_ALT)
+        detail_content.pack(fill=BOTH, expand=True, padx=14, pady=12)
+        Label(detail_content, textvariable=self.market_detail_title, bg=Theme.PANEL_ALT, fg=Theme.TEXT,
+              anchor="w", justify=LEFT, wraplength=490,
+              font=(Theme.FONT_FAMILY, 13, "bold")).pack(fill=X)
+        Label(detail_content, textvariable=self.market_detail_author, bg=Theme.PANEL_ALT, fg=Theme.MUTED,
+              anchor="w", font=(Theme.FONT_FAMILY, 9)).pack(fill=X, pady=(3, 8))
+
+        metrics = Frame(detail_content, bg=Theme.PANEL_ALT)
+        metrics.pack(fill=X, pady=(0, 8))
+        self._market_metric(metrics, "market_layers_label", self.market_detail_layers).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
+        self._market_metric(metrics, "market_stats_label", self.market_detail_stats).pack(side=LEFT, fill=X, expand=True, padx=(6, 0))
+
+        Label(detail_content, textvariable=self.market_detail_tags, bg=Theme.PANEL_ALT, fg=Theme.ACCENT_SOFT,
+              anchor="w", justify=LEFT, wraplength=490,
+              font=(Theme.FONT_FAMILY, 9, "bold")).pack(fill=X, pady=(0, 8))
+        desc_border = Frame(detail_content, bg=Theme.BORDER, height=72)
+        desc_border.pack(fill=BOTH, expand=True)
+        desc_inner = Frame(desc_border, bg=Theme.INPUT)
+        desc_inner.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        self.market_description_text = Text(desc_inner, wrap="word", height=4, borderwidth=0, highlightthickness=0)
+        self.market_description_text.pack(side=LEFT, fill=BOTH, expand=True)
+        desc_scroll = ttk.Scrollbar(desc_inner, orient="vertical", command=self.market_description_text.yview)
+        desc_scroll.pack(side=RIGHT, fill=Y)
+        self.market_description_text.configure(yscrollcommand=desc_scroll.set)
+        self.market_description_text.configure(
+            bg=Theme.INPUT, fg=Theme.MUTED,
+            insertbackground=Theme.TEXT,
+            selectbackground=Theme.ACCENT_DARK,
+            selectforeground=Theme.TEXT_ON_ACCENT,
+            font=(Theme.FONT_FAMILY, 9),
+            state="disabled",
+        )
+
+        self._apply_dark_theme_recursive(top)
+        self._center_toplevel(top, 960, 740)
+        top.deiconify()
+        self._ensure_window_in_taskbar(top)
+        self._activate_modal(top)
+        search_entry.focus_set()
+        self.refresh_market_items()
+
+    def _hide_market_modal(self):
+        top = self.market_modal
+        if top is None:
+            return
+        try:
+            if top.winfo_exists():
+                self._deactivate_modal(top)
+                top.withdraw()
+        except Exception:
+            self._deactivate_modal(top)
+            self.market_modal = None
+
+    def _market_metric(self, parent, label_key, variable):
+        outer = Frame(parent, bg=Theme.BORDER)
+        inner = Frame(outer, bg=Theme.PANEL_ALT)
+        inner.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        self._label(inner, label_key, bg=Theme.PANEL_ALT, fg=Theme.SUBTLE,
+                    font=(Theme.FONT_FAMILY, 8, "bold"), anchor="w").pack(fill=X, padx=10, pady=(7, 0))
+        Label(inner, textvariable=variable, bg=Theme.PANEL_ALT, fg=Theme.TEXT,
+              font=(Theme.FONT_FAMILY, 10, "bold"), anchor="w", justify=LEFT,
+              wraplength=190).pack(fill=X, padx=10, pady=(2, 10), ipady=2)
+        return outer
+
+    def _set_market_notice(self, key=None, **payload):
+        self.market_notice_key = key
+        self.market_notice_payload = dict(payload or {})
+        if not key:
+            self.market_notice.set("")
+            return
+        message = tr(self.lang, key)
+        if payload:
+            try:
+                message = message.format(**payload)
+            except Exception:
+                pass
+        self.market_notice.set(message)
+
+    def _refresh_market_language(self):
+        if hasattr(self, "market_count_label") and self.market_count_label is not None:
+            self.market_count_label.config(text=tr(self.lang, "market_count").format(count=len(self.market_items)))
+        item = self._selected_market_item()
+        if item:
+            self._set_market_detail_text(item)
+        else:
+            self._clear_market_details()
+        if self.market_notice_key:
+            self._set_market_notice(self.market_notice_key, **self.market_notice_payload)
+        if self.market_preview_label is not None and getattr(self.market_preview_label, "image", None) is None:
+            self.market_preview_label.config(text=tr(self.lang, "market_preview_hint"))
+
+    def _market_api_url(self, path, query=None):
+        base = MARKET_URL.rstrip("/")
+        if not path.startswith("/"):
+            path = "/" + path
+        url = base + path
+        if query:
+            url += "?" + urllib.parse.urlencode(query)
+        return url
+
+    def _market_request(self, path, query=None):
+        request = urllib.request.Request(
+            self._market_api_url(path, query),
+            headers={"User-Agent": f"{APP_DISPLAY_NAME}/{__version__}", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode("utf-8", errors="replace"))
+
+    def refresh_market_items(self):
+        self._set_market_notice("market_loading")
+        if self.market_list is not None:
+            self.market_list.delete(0, END)
+        if hasattr(self, "market_count_label"):
+            self.market_count_label.config(text="")
+        self._clear_market_details()
+        if self.market_preview_label is not None:
+            self.market_preview_item_id = None
+            self.market_preview_label.config(image="", text=tr(self.lang, "market_preview_hint"))
+            self.market_preview_label.image = None
+        search = self._normalized_market_search(self.market_search.get())
+        threading.Thread(target=self._market_load_worker, args=(search,), daemon=True).start()
+
+    def _market_load_worker(self, search):
+        try:
+            search_text = search.get("text") if isinstance(search, dict) else search
+            query = {"sort": "popular"}
+            if search_text:
+                query["q"] = search_text
+            payload = self._market_request("/api/market/items", query)
+            items = payload.get("items", [])
+            if search_text:
+                fallback = self._market_request("/api/market/items", {"sort": "popular"}).get("items", [])
+                matched = self._filter_market_items(fallback, search)
+                if isinstance(search, dict) and search.get("tag_only"):
+                    items = matched
+                else:
+                    seen = {item.get("id") for item in items}
+                    items.extend(item for item in matched if item.get("id") not in seen)
+            self.queue.put(("market_items", items))
+        except Exception as exc:
+            self.queue.put(("market_error", str(exc)))
+
+    def _normalized_market_search(self, value):
+        text = str(value or "").strip()
+        is_tag = text.startswith("#")
+        while text.startswith("#"):
+            text = text[1:].strip()
+        if is_tag:
+            return {"text": text, "tag_only": True}
+        return text
+
+    def _filter_market_items(self, items, search):
+        tag_only = isinstance(search, dict) and search.get("tag_only")
+        needle = str(search.get("text") if isinstance(search, dict) else search or "").casefold()
+        if not needle:
+            return list(items or [])
+        matched = []
+        for item in items or []:
+            tags = [str(tag) for tag in (item.get("tags") or [])]
+            if tag_only:
+                if any(needle == tag.casefold() for tag in tags):
+                    matched.append(item)
+                continue
+            author = (item.get("author") or {}).get("displayName") or ""
+            haystack = " ".join([
+                str(item.get("title") or ""),
+                str(item.get("description") or ""),
+                author,
+                " ".join(tags),
+            ]).casefold()
+            if needle in haystack:
+                matched.append(item)
+        return matched
+
+    def _render_market_items(self, items):
+        self.market_items = list(items or [])
+        if self.market_list is None:
+            return
+        self.market_list.delete(0, END)
+        if hasattr(self, "market_count_label"):
+            self.market_count_label.config(text=tr(self.lang, "market_count").format(count=len(self.market_items)))
+        for item in self.market_items:
+            author = (item.get("author") or {}).get("displayName") or "?"
+            title = item.get("title") or item.get("id") or "Untitled"
+            layers = item.get("defaultLayers", "-")
+            self.market_list.insert(END, f"{self._clip_market_text(title, 34)}  ·  {layers}  ·  {self._clip_market_text(author, 18)}")
+        if self.market_items:
+            self.market_list.selection_set(0)
+            self.market_list.activate(0)
+            self._update_market_status()
+        else:
+            self._set_market_notice("market_empty")
+            self._clear_market_details()
+            if self.market_preview_label is not None:
+                self.market_preview_item_id = None
+                self.market_preview_label.config(image="", text=tr(self.lang, "market_preview_hint"))
+                self.market_preview_label.image = None
+
+    def _selected_market_item(self):
+        if self.market_list is None:
+            return None
+        selection = self.market_list.curselection()
+        if not selection:
+            return None
+        try:
+            return self.market_items[selection[0]]
+        except IndexError:
+            return None
+
+    def _update_market_status(self, _event=None):
+        item = self._selected_market_item()
+        if not item:
+            return
+        self._load_market_preview(item)
+        self._set_market_notice()
+        self._set_market_detail_text(item)
+
+    def _set_market_detail_text(self, item):
+        author = (item.get("author") or {}).get("displayName") or "?"
+        title = item.get("title") or item.get("id") or "Untitled"
+        description = item.get("description") or tr(self.lang, "market_no_description")
+        layers = item.get("defaultLayers", "-")
+        template = item.get("recommendedTemplateLayers", "-")
+        downloads = item.get("downloads", 0)
+        likes = item.get("likes", 0)
+        comments = item.get("comments", 0)
+        tags = item.get("tags") or []
+        self.market_detail_title.set(title)
+        self.market_detail_author.set(tr(self.lang, "market_author").format(author=author))
+        self.market_detail_layers.set(tr(self.lang, "market_layers_metric").format(layers=layers, template=template))
+        self.market_detail_stats.set(tr(self.lang, "market_stats_metric").format(
+            downloads=downloads, likes=likes, comments=comments))
+        self.market_detail_tags.set(" ".join(f"#{tag}" for tag in tags[:10]) if tags else tr(self.lang, "market_no_tags"))
+        self.market_detail_description.set(description)
+        self._set_market_description(description)
+
+    def _clear_market_details(self):
+        self.market_detail_title.set("")
+        self.market_detail_author.set("")
+        self.market_detail_layers.set("")
+        self.market_detail_stats.set("")
+        self.market_detail_tags.set("")
+        self.market_detail_description.set("")
+        self._set_market_description("")
+
+    def _set_market_description(self, text):
+        widget = getattr(self, "market_description_text", None)
+        if widget is None:
+            return
+        try:
+            widget.config(state="normal")
+            widget.delete("1.0", END)
+            if text:
+                widget.insert(END, text)
+            widget.config(state="disabled")
+        except Exception:
+            pass
+
+    def _clip_market_text(self, value, limit):
+        text = str(value or "")
+        if len(text) <= limit:
+            return text
+        return text[:max(1, limit - 1)] + "…"
+
+    def _load_market_preview(self, item):
+        item_id = item.get("id")
+        self.market_preview_item_id = item_id
+        label = self.market_preview_label
+        if label is not None:
+            label.config(image="", text=tr(self.lang, "market_preview_loading"))
+            label.image = None
+        preview_url = item.get("previewUrl")
+        if not preview_url:
+            if label is not None:
+                label.config(text=tr(self.lang, "market_preview_hint"))
+            return
+        threading.Thread(target=self._market_preview_worker, args=(item_id, preview_url), daemon=True).start()
+
+    def _market_preview_worker(self, item_id, preview_url):
+        try:
+            if str(preview_url).startswith("http"):
+                url = str(preview_url)
+            else:
+                url = self._market_api_url(str(preview_url))
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": f"{APP_DISPLAY_NAME}/{__version__}", "Accept": "image/png,image/*"},
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                data = response.read()
+            self.queue.put(("market_preview", {"id": item_id, "data": data}))
+        except Exception as exc:
+            self.queue.put(("market_preview_error", {"id": item_id, "error": str(exc)}))
+
+    def _market_preview_photo(self, data):
+        try:
+            from PIL import Image, ImageTk
+            with Image.open(io.BytesIO(data)) as image:
+                image = image.convert("RGBA")
+                image.thumbnail((244, 300), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(image)
+        except Exception:
+            return PhotoImage(data=data)
+
+    def _show_market_preview(self, item_id, data):
+        if item_id != self.market_preview_item_id or self.market_preview_label is None:
+            return
+        try:
+            image = self._market_preview_photo(data)
+        except Exception:
+            self.market_preview_label.config(image="", text=tr(self.lang, "preview_unavailable"))
+            self.market_preview_label.image = None
+            return
+        self.market_preview_label.config(image=image, text="")
+        self.market_preview_label.image = image
+
+    def download_selected_market_json(self):
+        item = self._selected_market_item()
+        if not item:
+            self._set_market_notice("market_empty")
+            return
+        self._set_market_notice("market_loading")
+        threading.Thread(target=self._market_download_worker, args=(item,), daemon=True).start()
+
+    def open_selected_market_website(self):
+        item = self._selected_market_item()
+        if not item:
+            webbrowser.open(MARKET_URL)
+            return
+        item_id = item.get("id")
+        if item_id:
+            webbrowser.open(f"{MARKET_URL.rstrip()}/?q={urllib.parse.quote(str(item_id))}")
+        else:
+            webbrowser.open(MARKET_URL)
+
+    def _market_download_worker(self, item):
+        try:
+            item_id = item.get("id")
+            detail = self._market_request(f"/api/market/items/{urllib.parse.quote(str(item_id), safe='')}")
+            files = detail.get("geometryFiles") or []
+            if not files:
+                raise RuntimeError("No geometry JSON files are available for this preset.")
+            geometry = next((file for file in files if file.get("isDefault")), files[0])
+            folder = ROOT / "runtime" / "market-downloads"
+            folder.mkdir(parents=True, exist_ok=True)
+            filename = self._safe_market_filename(geometry.get("fileName") or f"{detail.get('title') or item_id}.json")
+            output = folder / filename
+
+            if output.exists():
+                try:
+                    existing_data = output.read_bytes()
+                    json.loads(existing_data.decode("utf-8", errors="replace"))
+                    expected_hash = str(geometry.get("sha256") or "").strip().lower()
+                    if expected_hash and hashlib.sha256(existing_data).hexdigest().lower() != expected_hash:
+                        raise ValueError("Existing market JSON does not match the preset hash.")
+                    self.queue.put(("market_downloaded", {
+                        "path": output,
+                        "template": geometry.get("recommendedTemplateLayers") or detail.get("recommendedTemplateLayers"),
+                        "reused": True,
+                    }))
+                    return
+                except Exception:
+                    pass
+
+            file_id = urllib.parse.quote(str(geometry.get("id")), safe="")
+            url = self._market_api_url(f"/api/market/items/{urllib.parse.quote(str(item_id), safe='')}/files/{file_id}")
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": f"{APP_DISPLAY_NAME}/{__version__}", "Accept": "application/json,*/*"},
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
+                data = response.read()
+            json.loads(data.decode("utf-8", errors="replace"))
+            output.write_bytes(data)
+            self.queue.put(("market_downloaded", {
+                "path": output,
+                "template": geometry.get("recommendedTemplateLayers") or detail.get("recommendedTemplateLayers"),
+                "reused": False,
+            }))
+        except Exception as exc:
+            self.queue.put(("market_error", str(exc)))
+
+    def _safe_market_filename(self, value):
+        name = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", str(value or "market.json")).strip(" ._")
+        if not name.lower().endswith(".json"):
+            name += ".json"
+        return name[:180] or "market.json"
 
     def add_json(self):
         files = filedialog.askopenfilenames(
@@ -4392,6 +4952,40 @@ class App:
                 self.show_preview_file(payload)
             elif kind == "render_lists":
                 self._render_lists()
+            elif kind == "market_items":
+                self._render_market_items(payload)
+            elif kind == "market_error":
+                message = tr(self.lang, "market_error").format(error=payload)
+                self._set_market_notice("market_error", error=payload)
+                self.log_line(message)
+            elif kind == "market_preview":
+                self._show_market_preview(payload.get("id"), payload.get("data"))
+            elif kind == "market_preview_error":
+                if payload.get("id") == self.market_preview_item_id and self.market_preview_label is not None:
+                    self.market_preview_label.config(image="", text=tr(self.lang, "preview_unavailable"))
+                    self.market_preview_label.image = None
+            elif kind == "market_downloaded":
+                path = Path(payload.get("path"))
+                if path.exists() and path not in self.json_files:
+                    self.json_files.append(path)
+                template = payload.get("template")
+                if template and not self.layer_count.get().strip():
+                    self.layer_count.set(str(template))
+                self._render_lists()
+                if path in self.json_files and hasattr(self, "json_list"):
+                    index = self.json_files.index(path)
+                    self.json_list.selection_clear(0, END)
+                    self.json_list.selection_set(index)
+                    self.json_list.activate(index)
+                self.show_json_preview(path)
+                if payload.get("reused"):
+                    message = tr(self.lang, "market_reused").format(path=path)
+                    self._set_market_notice("market_reused_short")
+                else:
+                    message = tr(self.lang, "market_downloaded").format(path=path)
+                    self._set_market_notice("market_downloaded_short")
+                self.log_line(message)
+                self._hide_market_modal()
             elif kind == "update_failed":
                 self._handle_update_failed(payload)
             elif kind == "update_current":

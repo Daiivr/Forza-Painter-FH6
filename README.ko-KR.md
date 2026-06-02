@@ -10,17 +10,18 @@
 
 <p align="center">
   <a href="README.md">English</a> ·
+  <a href="README.es-ES.md">Español</a> ·
   <a href="README.zh-CN.md">中文</a> ·
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
 <p align="center">
-  <code>v1.6.8</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
+  <code>v1.7.0</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
 </p>
 
 PNG/JPG/BMP 이미지를 Forza Horizon 6 비닐 그룹 레이어로 변환합니다. 앱에서 생성, 미리보기, 가져오기를 한 번에 처리하며 일반 사용자는 Python, `.venv`, 배치 파일, 메모리 주소 입력이 필요 없습니다.
 
-> **EXE 다운로드:** [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)에서 `forza-painter-fh6-v1.6.8.exe`를 내려받아 바로 실행하세요.
+> **EXE 다운로드:** [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)에서 `forza-painter-fh6-v1.7.0.exe`를 내려받아 바로 실행하세요.
 
 > **결과가 흐릿하면:** 먼저 `Random samples` 값을 높이세요. **200000** 이상부터 품질 차이가 크게 보이는 경우가 많습니다.
 
@@ -36,7 +37,7 @@ PNG/JPG/BMP 이미지를 Forza Horizon 6 비닐 그룹 레이어로 변환합니
 
 ## 빠른 시작
 
-1. [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)에서 `forza-painter-fh6-v1.6.8.exe`를 다운로드합니다.
+1. [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)에서 `forza-painter-fh6-v1.7.0.exe`를 다운로드합니다.
 2. EXE를 쓰기 가능한 일반 폴더에 둡니다. 예: `Desktop\forza-painter-fh6`.
 3. EXE를 더블 클릭합니다. FH6 가져오기에서 Windows가 프로세스 접근을 막으면 관리자 권한으로 실행하세요.
 4. FH6에서 `Create Vinyl Group` / `Vinyl Group Editor`를 열고 sphere 템플릿을 불러온 뒤 `Ungroup`합니다.
@@ -140,6 +141,18 @@ EXE 옆에 생길 수 있는 외부 폴더:
 ## 변경 기록
 
 여기에는 버전 번호가 있는 릴리스만 남깁니다. 앱 업데이트 안내에 쓰이는 전체 기록은 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
+
+### v1.7.0 / 2026-06-02
+
+- 앱 버전을 `v1.7.0`으로 업데이트했습니다. 릴리스 파일은 이제 `forza-painter-fh6-v1.7.0.exe`를 사용합니다.
+- Import 탭에 painter6.com 프리셋을 탐색하고, 디자인을 미리 보고, 선택한 프리셋을 웹에서 열고, geometry JSON을 다운로드한 뒤 Import 탭에 자동으로 추가하는 인앱 Market을 추가했습니다.
+- Market 다운로드는 이제 `runtime/market-downloads`에 이미 있는 유효한 JSON을 재사용하고 같은 프리셋을 다시 다운로드하지 않습니다.
+- 기존 Market JSON은 가능한 경우 프리셋 해시와 비교해 검증하며, 재사용된 다운로드는 별도의 번역된 확인 메시지를 표시합니다.
+- Market 모달이 열린 상태에서 언어를 바꾸면 프리셋 상세 정보, 개수, 빈 설명, 알림, 번역된 Market 버튼이 즉시 새 언어로 갱신됩니다.
+- 실제 태그만 찾는 엄격한 `#tag` 검색을 포함해 Market 검색을 개선했습니다.
+- Generate JSON 이미지 선택 영역과 품질 카드 표시를 정리하고, 선택된 레이어 수 요약을 추가했습니다.
+- 테마 모달에 더 잘 보이는 강조 테두리를 추가하고 Windows의 topmost 동작을 개선했습니다.
+- 새로운 Market, 이미지, 품질, 모달, 상태 문구 번역을 추가했습니다.
 
 ### v1.6.8 / 2026-05-28
 
