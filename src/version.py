@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 APP_DISPLAY_NAME = "Forza-Painter FH6"
-__version__ = "1.7.0"
+__version__ = "1.8.4"
 
 
 def app_title():
-    return f"{APP_DISPLAY_NAME} v{__version__}"
+    return APP_DISPLAY_NAME

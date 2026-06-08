@@ -53,6 +53,11 @@ $common = @(
     "--hidden-import", "PIL",
     "--hidden-import", "PIL.Image",
     "--hidden-import", "PIL.ImageDraw",
+    "--hidden-import", "fh6_vinyl_resources",
+    "--hidden-import", "fh6_typecode_probe",
+    "--hidden-import", "fh6_typecode_export",
+    "--hidden-import", "fh6_typecode_import",
+    "--hidden-import", "fh6_typecode_trim",
     "--hidden-import", "preprocess.luma"
 )
 
@@ -68,6 +73,7 @@ $appArgs = $common + $iconArgs + @(
     "--add-data", "$(Join-Path $Root 'bin');bin",
     "--add-data", "$(Join-Path $Root 'assets');assets",
     "--add-data", "$(Join-Path $Root 'docs');docs",
+    "--add-data", "$(Join-Path $Root 'src\data');data",
     (Join-Path $Root "src\app.py")
 )
 & $Python -m PyInstaller @appArgs

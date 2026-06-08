@@ -1,252 +1,200 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/d4f48f71-d76e-4ffe-9fb1-0b075d79bf05" alt="forza-painter FH6 logo" width="720">
+  <img src="docs/screenshots/forza-painter-fh6-showcase.png" alt="Forza-Painter FH6 showcase">
 </p>
 
-<h1 align="center">forza-painter FH6</h1>
+# Forza-Painter FH6
 
-<p align="center">
-  <strong>Image to Forza Horizon 6 Vinyl Group generator and importer.</strong>
-</p>
+**Vinyl Import Tool for Forza Horizon 6.** Convert images into Forza-compatible vinyl geometry, preview the result, and import it into the FH6 Vinyl Group Editor from one desktop app.
 
-<p align="center">
-  <a href="README.md">English</a> ·
-  <a href="README.es-ES.md">Español</a> ·
-  <a href="README.zh-CN.md">中文</a> ·
+<p>
+  <a href="README.md">English</a> |
+  <a href="README.es-ES.md">Español</a> |
+  <a href="README.es-MX.md">Español MX</a> |
+  <a href="README.zh-CN.md">中文</a> |
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
-<p align="center">
-  <code>v1.7.0</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
+<p>
+  <code>v1.8.4</code> <code>Windows</code> <code>Forza Horizon 6</code> <code>GPU/OpenCL</code> <code>One-file EXE</code>
 </p>
 
-Convert PNG/JPG/BMP images into Forza Horizon 6 Vinyl Group layers. The app handles generation, preview, and import in one desktop window; normal users do not need Python, `.venv`, batch files, or manual memory addresses.
+## What It Does
 
-> **Download the EXE:** get `forza-painter-fh6-v1.7.0.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) and run it directly.
+Forza-Painter FH6 is built around the current FH6 vinyl workflow:
 
-> **If the result looks blurry:** raise `Random samples` first. Values above **200000** usually make a major quality difference; higher values are clearer but take much longer to generate.
+- Generate geometry JSON from PNG, JPG, or BMP images.
+- Preview generated JSON before importing it.
+- Import geometry JSON into an ungrouped FH6 vinyl template.
+- Browse and download community presets from the in-app Market.
+- Refine important areas with Region Paint.
+- Export and import experimental full-shape/type-code JSONs for research workflows.
+- Keep logs, runtime data, previews, and import diagnostics inside local app folders.
 
-> **Import can take time:** v1.4.1+ tries multiple FH6 template locators and can spend up to 5 minutes finding the safe layer table. Keep FH6 in Vinyl Group Editor, do not switch menus, and export a detailed log if it still fails.
+Normal users should download the EXE from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases). You do not need Python, a virtual environment, or the source ZIP unless you are developing the project.
 
-| What it does | Details |
-| --- | --- |
-| Generate JSON | Convert images into geometry JSON with the bundled GPU/OpenCL generator. |
-| Preview output | Show source and generated geometry previews inside the app. |
-| Import to FH6 | Import JSON into the currently open FH6 Vinyl Group Editor. |
-| Safe FH6 workflow | Auto-locate and verify the editable layer table before writing. |
-| Update check | Check for new versions on startup and show changelog notes when available. |
+## Current App
 
-## Quick Start
-
-1. Download `forza-painter-fh6-v1.7.0.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases).
-2. Put the EXE in a normal writable folder, for example `Desktop\forza-painter-fh6`.
-3. Double-click the EXE. For FH6 import, run it as administrator if Windows blocks process access.
-4. In FH6, open `Create Vinyl Group` / `Vinyl Group Editor`, load a sphere template, then `Ungroup` it.
-5. In the app, generate JSON, open the `Import` page, enter the exact template layer count, then import.
-
-Do not download GitHub's automatic `Source code` ZIP unless you are developing the project. Normal users only need the `.exe`.
-
-## Preview
+These screenshots were captured from the current `v1.8.4` desktop UI.
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/app-import-preview.png" alt="App import page"><br>
-      <strong>App import page</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-generate-json-current.png" alt="Generate JSON screen">
+      <strong>Generate JSON</strong><br>
+      Add source images, choose a quality preset, tune generation settings, and watch progress.
     </td>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-template-ready.png" alt="FH6 template ready"><br>
-      <strong>Template ready in FH6</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-import-current.png" alt="Import screen">
+      <strong>Import</strong><br>
+      Select the FH6 process, enter the exact template layer count, preview JSON, and import.
     </td>
   </tr>
   <tr>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-import-result.png" alt="FH6 import result"><br>
-      <strong>Imported result</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-region-paint-current.png" alt="Region Paint screen">
+      <strong>Region Paint</strong><br>
+      Generate a base pass, select key regions, and spend extra layers where detail matters most.
     </td>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-car-applied.png" alt="FH6 car applied result"><br>
-      <strong>Applied to car</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-full-shapes-current.png" alt="Full Shapes screen">
+      <strong>Full Shape I/O</strong><br>
+      Experimental FH6 shape-word export/import tooling for full-shape JSON research.
     </td>
   </tr>
 </table>
 
+## In-Game Workflow
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-template-ready.png" alt="FH6 template ready">
+      <strong>Prepare a template</strong><br>
+      Open the FH6 Vinyl Group Editor, load a sphere-layer template, and ungroup it.
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-import-result.png" alt="FH6 import result">
+      <strong>Import the JSON</strong><br>
+      Keep the editor open while the app locates the editable layer table and writes the design.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/app-import-preview.png" alt="App JSON preview">
+      <strong>Check the preview</strong><br>
+      JSON previews are useful for layer checks, but the in-game result is the final reference.
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-car-applied.png" alt="FH6 car applied result">
+      <strong>Apply it to the car</strong><br>
+      Once imported and saved, use the vinyl group like any other FH6 design.
+    </td>
+  </tr>
+</table>
+
+## Quick Start
+
+1. Download `forza-painter-fh6-v1.8.4.exe` from [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases).
+2. Place the EXE in a normal writable folder, for example `Desktop\forza-painter-fh6`.
+3. Run the EXE. If import fails because of Windows process permissions, run it as administrator.
+4. In FH6, open `Create Vinyl Group` / `Vinyl Group Editor`.
+5. Load a sphere template, ungroup it, and note the exact in-game layer count.
+6. In Forza-Painter FH6, generate or add a JSON, select the FH6 process, enter the template layer count, and import.
+
 ## Generate JSON
 
-1. Open the `Generate JSON` page.
-2. Click `Add images` and choose PNG/JPG/BMP images.
-3. Select a quality preset.
-4. Optional: enable `Use custom settings` to change output layers, resolution, random samples, and mutated samples.
-5. Click the fixed bottom `Start generating` button.
-6. Wait for the preview and logs to update.
+The Generate JSON page converts images into Forza-friendly geometry files using the bundled GPU/OpenCL generator.
 
-Generated files are saved beside the source image, for example `image.500.json`, `image.1000.json`, and `image.3000.json`.
+1. Add one or more images.
+2. Choose a quality preset.
+3. Optionally open `Quality settings` for layer count, resolution, random samples, and other advanced values.
+4. Start generation and wait for the preview/logs to update.
+5. Use the highest-layer JSON that fits your template.
 
-One image can generate multiple checkpoint JSON files. Prefer the highest-layer JSON that matches your template; for example, use `image.3000.json` or the final `image.json` with a 3000-layer template. Importing a 500-layer JSON into a 3000-layer template will look blurry.
-
-| Preset | Output layers | Random samples | Use case |
-| --- | ---: | ---: | --- |
-| extremely fast | 500 | 30000 | Quick composition checks |
-| fast | 1000 | 60000 | Quick usable drafts |
-| balanced | 1800 | 120000 | Recommended default |
-| slow | 2500 | 220000 | Final quality; starts using the 200k+ quality range |
-| super slow | 3000 | 350000 | Best clarity, very slow |
+Generated files are saved beside the source image. A single image can produce checkpoint files such as `image.500.json`, `image.1000.json`, `image.3000.json`, and a final `image.json`.
 
 ## Import JSON
 
-1. Start FH6 and keep `Vinyl Group Editor` open.
-2. Load or create a template made from many simple sphere layers.
-3. `Ungroup` the template and remember the exact in-game layer count.
-4. In the app, open `Import`, click `Refresh`, and select `forzahorizon6.exe`.
-5. Enter the exact template layer count.
-6. Add the generated `.json`, or click `Use generated JSON`.
-7. Leave advanced address fields empty and click `Import JSON`.
-
-FH needs 4 extra boundary layers to save the cover and apply bounds correctly. Example: a 1000-layer JSON should use at least a 1004-layer template; a 3000-layer template can import about 2996 drawable shapes.
-
-## Important Rules
+The Import page writes generated geometry into the current FH6 Vinyl Group Editor session.
 
 - The FH6 template must be ungrouped before import.
-- The layer count in the app must exactly match the game.
-- Do not switch game menus while importing.
-- After restarting FH6, reloading the template, or changing layer count, import again with the new correct count.
-- If JSON has fewer layers than the template, unused template layers are hidden.
-- If JSON has more layers than the template, extra shapes are trimmed.
-- Transparent PNG backgrounds are not imported as visible backgrounds.
+- The layer count entered in the app must match the game exactly.
+- Keep FH6 in the Vinyl Group Editor while importing.
+- Do not switch menus while the app is scanning or writing.
+- If Windows blocks process access, restart the app as administrator.
 
-## Runtime Files
+FH6 needs a few extra boundary layers for saving and applying bounds correctly. For example, a 1000-layer JSON should use a template with at least 1004 layers; a 3000-layer template usually leaves about 2996 drawable layers.
 
-The one-file EXE extracts its internal files temporarily and stores normal runtime data outside the EXE. The app shows the exact paths in the startup log and on the `Tools` page.
+## Region Paint
 
-Expected external folders beside the EXE:
+Region Paint is for images where some areas need more detail than others. It generates a first pass, lets you select a rectangle or ellipse, then spends additional layers only in that selected area.
 
-- `runtime/`: logs, generated session data, and temporary app files.
-- `webui-data/`: local browser/UI cache.
+Current Region Paint tools include:
 
-These folders can be deleted when the app is closed if you want to reset local runtime data.
+- First-pass and region-pass layer budgets.
+- Rectangular and elliptical selections.
+- Drag, resize, rotate, and scroll-wheel controls.
+- Preview and heatmap tabs.
+- Pass history, remaining-layer tracking, and result JSON export.
+
+## Market
+
+The Import page includes an in-app Market button for painter6.com presets. You can browse designs, preview selected presets, download geometry JSON, and add the downloaded JSON directly to the import list.
+
+## Full Shape I/O
+
+Full Shape I/O is experimental. It is meant for exported or handmade FH6 type-code JSONs, not the normal ellipse geometry produced by the generator.
+
+- Uses the 16-bit FH6 shape word at layer offset `0x7A`.
+- Exports stable visual fields such as position, scale, rotation, skew, color, mask/banner data, and shape word.
+- Avoids volatile resource pointers such as `0xA8`.
+- Uses bundled FH6 vinyl resources for previews when available.
+
+Use the standard Import page for normal generated geometry JSONs.
+
+## Runtime Folders
+
+The one-file EXE extracts its internal files temporarily and writes normal app data beside the EXE:
+
+- `runtime/`: logs, generation previews, Region Paint sessions, market downloads, and temporary files.
+- `webui-data/`: local preferences and FH6 probe/session cache.
+
+You can delete these folders while the app is closed if you want to reset local runtime data.
 
 ## Troubleshooting
 
-- **EXE will not import into FH6:** close the app and run the EXE as administrator.
-- **GPU/OpenCL error:** update NVIDIA/AMD/Intel graphics drivers. The bundled generator uses OpenCL.
-- **Template cannot be located:** confirm you are in Vinyl Group Editor, the template is ungrouped, the layer count is exact, and the menu was not changed during scanning.
-- **Imported result is blurry:** use a higher-layer JSON or increase `Output layers` / `Random samples`.
-- **Need help debugging:** use `Export detailed log` in the app and attach the log to an issue.
+- **Import does not start:** run the app as administrator and confirm the FH6 editor is open.
+- **Template cannot be located:** ungroup the template, enter the exact layer count, and stay in the editor during scanning.
+- **Result looks blurry:** raise the output layers and `Random samples`; values above `200000` usually improve final clarity.
+- **Preview differs from FH6:** current JSON previews are approximate because FH6 keeps decimal ellipse sizes that the app preview simplifies.
+- **GPU/OpenCL error:** update NVIDIA, AMD, or Intel graphics drivers.
+- **Need help debugging:** use `Export detailed log` and attach the log when opening an issue.
+
+## Development
+
+Source runs are mainly for development and testing:
+
+```powershell
+install_dependencies.bat
+start_app.bat
+```
+
+Useful project files:
+
+- `src/app.py`: desktop UI and workflows.
+- `src/generator_backend.py`: generator command/build integration.
+- `src/import_readiness.py`: pre-import checks.
+- `src/region_painter/`: Region Paint workflow modules.
+- `scripts/make_exe_release.ps1`: release packaging.
+- `CHANGELOG.md`: full version history.
 
 ## Resources
 
-- Import walkthrough video: https://www.bilibili.com/video/BV1hG5Z6nENZ
-- Bundled GPU generator source/reference: https://github.com/zjl88858/forza-painter-geometrize-gpu
+- Releases: [github.com/Daiivr/Forza-Painter-FH6/releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)
+- Import walkthrough video: [bilibili.com/video/BV1hG5Z6nENZ](https://www.bilibili.com/video/BV1hG5Z6nENZ)
+- Bundled GPU generator reference: [zjl88858/forza-painter-geometrize-gpu](https://github.com/zjl88858/forza-painter-geometrize-gpu)
 - Full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-## Changelog
+## License
 
-Only versioned release entries are kept here. See [CHANGELOG.md](CHANGELOG.md) for the app update prompt changelog.
-
-### v1.7.0 / 2026-06-02
-
-- Updated the app version to `v1.7.0`; release packages now use `forza-painter-fh6-v1.7.0.exe`.
-- Added an in-app Market on the Import tab for browsing painter6.com presets, previewing designs, opening the selected preset in the browser, downloading geometry JSON, and automatically adding it to the Import tab.
-- Market downloads now reuse an existing valid JSON from `runtime/market-downloads` instead of downloading the same preset again.
-- Existing market JSON files are validated against the preset hash when available, and reused downloads now show their own translated confirmation message.
-- Switching languages while the Market modal is open now refreshes preset details, counts, empty descriptions, notices, and the translated Market button immediately.
-- Improved Market search, including strict `#tag` searches that only match real tags.
-- Cleaned up the Generate JSON image picker and quality card, including the selected-layer summary.
-- Added clearer accent borders and better topmost behavior for themed modals.
-- Added translations for the new market, image, quality, modal, and status text.
-
-### v1.6.8 / 2026-05-28
-
-- Updated the app version to `v1.6.8`; release packages now use `forza-painter-fh6-v1.6.8.exe`.
-- Kept float ellipse width/height from the latest GitHub `main` changes, improving in-game import accuracy.
-- Added a preview-panel note that v1.6.8 prioritizes better in-game output while previews remain approximate.
-- Improved JSON preview rendering with supersampling to reduce float-sized ellipse preview degradation.
-
-### v1.6.7 / 2026-05-27
-
-- Updated the app version to `v1.6.7`; release packages now use `forza-painter-fh6-v1.6.7.exe`.
-- Updated the bundled GPU generator to upstream `canary-26052702`.
-- Replaced FH6 import scale magic numbers with named constants for the circle and rectangle base sizes.
-- Improved generation ETA estimation for buffered generator output and changing generation speed.
-
-### v1.6.6 / 2026-05-26
-
-- Updated the app version to `v1.6.6`; release packages now use `forza-painter-fh6-v1.6.6.exe`.
-- Added Traditional Chinese UI translations and improved the language selector layout.
-- Fixed `luma_band` preprocessing for RGB images, made preprocessed-image writes safer, and added tests for geometry/color data handling.
-- Packaged OpenCV and NumPy into the one-file EXE so `luma_band` preprocessing works in release builds.
-- Import now requires the FH6 template layer count before starting.
-- Refactored core modules with typed exceptions and shared utility helpers.
-
-### v1.6.5 / 2026-05-25
-
-- Updated the app version to `v1.6.5`; release packages now use `forza-painter-fh6-v1.6.5.exe`.
-- Updated the bundled GPU generator to upstream `v1.2-Canary-20260525`.
-- Bundled presets now set `forceOpaqueShapes = false` by default.
-- Reduced main-app overhead during generation by using a sanitized generator environment, slower file polling, and less frequent preview writes in the heaviest preset.
-- Fixed generated output tracking when preprocessing creates a separate input image.
-
-### v1.6.1 / 2026-05-24
-
-- Updated the app version to `v1.6.1`; release packages now use `forza-painter-fh6-v1.6.1.exe`.
-- Disabled `luma_band` preprocessing by default in bundled presets.
-- Import no longer reuses stale FH6 session data from `webui-data`; it re-locates the current template before writing.
-- JSON previews now use one stable renderer path to avoid ellipse preview distortion differences between packaged EXE environments.
-
-### v1.6.0 / 2026-05-24
-
-- Updated the app version to `v1.6.0`; release packages now use `forza-painter-fh6-v1.6.0.exe`.
-- Updated the bundled GPU generator to upstream `canary-26052401`.
-- Added upstream `errorGridSize` preset support.
-- Integrated the upstream transparent-area overhang prevention algorithm adjustment.
-- Significantly improved generation quality for the large ellipse at the bottom of transparent images.
-
-### v1.5.4 / 2026-05-23
-
-- Fixed preview scaling for high-resolution source images, generator preview PNGs, and JSON previews so the full image fits the current preview panel without stretching.
-- Fixed type 16 rotated ellipse rendering in JSON previews so Import page previews no longer flatten or rotate ellipse strokes incorrectly.
-
-### v1.5.3 / 2026-05-22
-
-- Added EXE-friendly custom preset import, image/JSON list removal, checkpoint reuse, safer output naming, and Pillow preview fallback.
-
-### v1.5.2 / 2026-05-22
-
-- Added a true one-file EXE so normal users no longer need Python, `.venv`, or helper files.
-- The GUI EXE can relaunch itself in hidden helper mode for import and FH6 memory probing.
-- The Tools page and startup log now show external runtime/cache locations.
-
-### v1.5.1 / 2026-05-22
-
-- Fixed startup dependency installation when a project `.venv` exists but its Python does not have `pip`.
-- Improved startup-script diagnostics for incomplete source-package extraction.
-
-### v1.5.0 / 2026-05-22
-
-- Updated the bundled GPU/OpenCL generator to upstream `canary-26052102`.
-- Added the upstream work-group evaluation algorithm from PR #4 for faster GPU candidate evaluation.
-- Added startup update checking, root `CHANGELOG.md`, and the dark desktop UI.
-
-### v1.4.1 / 2026-05-21
-
-- FH6 template auto-location now tries both v1.3 and v1.4 scan strategies before giving up.
-- Added an RTTI vtable fallback locator and increased the auto-location wait budget.
-
-### v1.4.0 / 2026-05-21
-
-- Added detailed log export capped at 50000 characters.
-- Improved FH6 template auto-location for large writable memory regions.
-
-### v1.3.0 / 2026-05-21
-
-- Updated the bundled GPU/OpenCL generator to upstream `canary-26052101`.
-- Added the upstream GPU device-selection fix and selected-device logging.
-
-### v1.2.0 / 2026-05-20
-
-- Updated the bundled GPU/OpenCL generator to upstream `canary-26052001`.
-- Added `forceOpaqueShapes = true` to bundled and custom generation settings.
-
-### v1.1.1 / 2026-05-20
-
-- Added centralized version management for the app window, CLI, and release package names.
-- Reorganized the repository layout and release packaging.
+See [LICENSE](LICENSE), [LICENSE.custom-importer](LICENSE.custom-importer), and [LICENSE.kloudys-custom-importer](LICENSE.kloudys-custom-importer).

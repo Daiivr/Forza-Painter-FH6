@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.8.4 / 2026-06-07
+
+- Integrated upstream Region Paint selection improvements from `bvzrays/main` through `d9ac8df`: rectangle and ellipse selections now support drag-to-move, corner-handle resize, and rotation by slider, entry, scroll wheel, or canvas handle.
+- Added the new recommended `Especially nutritious` preset for stronger results on relatively low compute.
+- Preserved the local Full Shape I/O, Market, import-readiness, drag-and-drop, and FH6 type-code workflows while adding the upstream Region Paint modules.
+
+## v1.8.3 / 2026-06-06
+
+- Added Region Paint heatmap generation and a Heatmap preview tab after each first/region pass.
+- Improved Region Paint preview rendering performance.
+
+## v1.8.2 / 2026-06-06
+
+- Removed Region Paint feathering so generated selection masks stay hard-edged and reliable.
+
+## v1.8.1 / 2026-06-05
+
+- Added Region Paint: an iterative workflow that generates a base pass, lets users select rectangular or elliptical regions, then spends additional layers only inside those regions.
+- Added Region Paint budget management, pass history, live preview, result JSON export, and supporting workflow modules.
+
+## v1.8.0 / 2026-06-05
+
+- Updated the app version to `v1.8.0`; release packages now use `forza-painter-fh6-v1.8.0.exe`.
+- Added experimental FH6 full-shape/type-code JSON support with bundled vinyl shape resources, helper scripts, and resource-based preview rendering.
+- Added a Full Shape I/O page for importing type-code JSONs and exporting the currently editable FH6 vinyl group.
+- Normal Import now detects a single full-shape/type-code JSON and routes it through the full-shape importer, while regular generated geometry JSONs keep using the existing import flow.
+- Disabled full-shape layer-count trimming after import so written layers remain visible immediately in the editor.
+- Added full-shape debug report export as a ZIP for probe/import/export troubleshooting.
+
 ## v1.7.0 / 2026-06-02
 
 - Updated the app version to `v1.7.0`; release packages now use `forza-painter-fh6-v1.7.0.exe`.

@@ -9,6 +9,7 @@ from app_paths import ROOT, SOURCE_DIR
 APP_DIR = SOURCE_DIR
 PROBE_DIR = ROOT / "webui-data" / "probes"
 SESSION_PATH = PROBE_DIR / "current-fh6-session.json"
+FULL_SHAPE_ROOT = ROOT / "runtime" / "full-shape-io"
 
 
 # ---------------------------------------------------------------------------
