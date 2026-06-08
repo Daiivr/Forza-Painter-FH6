@@ -56,8 +56,8 @@ These screenshots were captured from the current `v1.8.4` desktop UI.
       Generate a base pass, select key regions, and spend extra layers where detail matters most.
     </td>
     <td width="50%">
-      <img src="docs/screenshots/app-full-shapes-current.png" alt="Full Shapes screen">
-      <strong>Full Shape I/O</strong><br>
+      <img src="docs/screenshots/app-full-shapes-current.png" alt="Export screen">
+      <strong>Export</strong><br>
       Experimental FH6 shape-word export/import tooling for full-shape JSON research.
     </td>
   </tr>
@@ -141,9 +141,9 @@ Current Region Paint tools include:
 
 The Import page includes an in-app Market button for painter6.com presets. You can browse designs, preview selected presets, download geometry JSON, and add the downloaded JSON directly to the import list.
 
-## Full Shape I/O
+## Export
 
-Full Shape I/O is experimental. It is meant for exported or handmade FH6 type-code JSONs, not the normal ellipse geometry produced by the generator.
+Export is experimental. It is meant for exported or handmade FH6 type-code JSONs, not the normal ellipse geometry produced by the generator.
 
 - Uses the 16-bit FH6 shape word at layer offset `0x7A`.
 - Exports stable visual fields such as position, scale, rotation, skew, color, mask/banner data, and shape word.

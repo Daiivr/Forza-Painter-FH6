@@ -1,252 +1,200 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/d4f48f71-d76e-4ffe-9fb1-0b075d79bf05" alt="forza-painter FH6 logo" width="720">
+  <img src="docs/screenshots/forza-painter-fh6-showcase.png" alt="Forza-Painter FH6 展示图">
 </p>
 
-<h1 align="center">forza-painter FH6</h1>
+# Forza-Painter FH6
 
-<p align="center">
-  <strong>把图片转换成 Forza Horizon 6 Vinyl Group 的生成与导入工具。</strong>
-</p>
+**Forza Horizon 6 乙烯基导入工具。** 将图片转换成 Forza 兼容的乙烯基几何数据，预览结果，并从一个桌面应用导入到 FH6 Vinyl Group Editor。
 
-<p align="center">
-  <a href="README.md">English</a> ·
-  <a href="README.es-ES.md">Español</a> ·
-  <a href="README.zh-CN.md">中文</a> ·
+<p>
+  <a href="README.md">English</a> |
+  <a href="README.es-ES.md">Español</a> |
+  <a href="README.es-MX.md">Español MX</a> |
+  <a href="README.zh-CN.md">中文</a> |
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
-<p align="center">
-  <code>v1.7.0</code> · <code>Windows</code> · <code>Forza Horizon 6</code> · <code>GPU/OpenCL</code> · <code>One-file EXE</code>
+<p>
+  <code>v1.8.4</code> <code>Windows</code> <code>Forza Horizon 6</code> <code>GPU/OpenCL</code> <code>单文件 EXE</code>
 </p>
 
-把 PNG/JPG/BMP 图片转换成 Forza Horizon 6 的 Vinyl Group 图层。软件内完成生成、预览和导入，普通用户不需要 Python、`.venv`、批处理文件，也不需要手动填写内存地址。
+## 功能概览
 
-> **下载 EXE：** 从 [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) 下载 `forza-painter-fh6-v1.7.0.exe`，直接运行。
+Forza-Painter FH6 围绕当前 FH6 乙烯基制作流程构建：
 
-> **画面发糊先看这里：** 优先提高生成页里的 `Random samples / 随机样本`。随机样本数在 **200000 以上** 通常会有明显质变；数值越高越清晰，但生成时间也会明显增加。
+- 从 PNG、JPG 或 BMP 图片生成 geometry JSON。
+- 在导入前预览生成的 JSON。
+- 将 geometry JSON 导入未分组的 FH6 乙烯基模板。
+- 在应用内 Market 浏览并下载社区预设。
+- 使用区域绘制强化重要区域的细节。
+- 为研究流程导出和导入实验性的完整形状/type-code JSON。
+- 将日志、运行数据、预览和导入诊断保存在本地应用文件夹中。
 
-> **导入可能需要等待：** v1.4.1 起会依次尝试多套 FH6 模板定位逻辑，最长可能需要 5 分钟。请保持 FH6 停留在 Vinyl Group Editor，不要切换菜单；若仍失败，请导出详细日志。
+普通用户应从 [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) 下载 EXE。除非你要开发项目，否则不需要 Python、虚拟环境或源码 ZIP。
 
-| 功能 | 说明 |
-| --- | --- |
-| 生成 JSON | 使用内置 GPU/OpenCL 生成器把图片转换成 geometry JSON。 |
-| 预览结果 | 在软件内预览原图和生成后的几何图形。 |
-| 导入 FH6 | 把 JSON 导入当前打开的 FH6 Vinyl Group Editor。 |
-| 安全写入 | 写入前自动定位并验证当前可编辑图层表。 |
-| 自动更新 | 启动时检查新版本，发现更新时显示更新内容。 |
+## 当前应用
 
-## 快速开始
-
-1. 从 [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) 下载 `forza-painter-fh6-v1.7.0.exe`。
-2. 把 EXE 放在普通可写目录里，例如 `Desktop\forza-painter-fh6`。
-3. 双击 EXE 启动。导入 FH6 时如果被 Windows 拦截进程访问，请用管理员身份运行 EXE。
-4. 在游戏里进入 `Create Vinyl Group` / `Vinyl Group Editor`，加载球形模板并 `Ungroup`。
-5. 在软件里生成 JSON，切到 `Import` 页面，填写游戏里显示的真实模板层数后导入。
-
-不要下载 GitHub 自动生成的 `Source code` ZIP，除非你要开发项目。普通用户只需要 `.exe`。
-
-## 效果预览
+以下截图来自当前 `v1.8.4` 桌面界面。
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/app-import-preview.png" alt="软件导入页面"><br>
-      <strong>软件导入页面</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-generate-json-current.png" alt="生成 JSON 页面">
+      <strong>生成 JSON</strong><br>
+      添加源图片，选择质量预设，调整生成设置，并查看进度。
     </td>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-template-ready.png" alt="FH6 模板准备"><br>
-      <strong>游戏里准备模板</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-import-current.png" alt="导入页面">
+      <strong>导入</strong><br>
+      选择 FH6 进程，输入准确的模板层数，预览 JSON 并导入。
     </td>
   </tr>
   <tr>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-import-result.png" alt="FH6 导入效果"><br>
-      <strong>导入完成效果</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-region-paint-current.png" alt="区域绘制页面">
+      <strong>区域绘制</strong><br>
+      生成基础结果，选择关键区域，把额外图层用在最需要细节的地方。
     </td>
-    <td align="center" width="50%">
-      <img src="docs/screenshots/fh6-car-applied.png" alt="FH6 车身贴图效果"><br>
-      <strong>贴到车身效果</strong>
+    <td width="50%">
+      <img src="docs/screenshots/app-full-shapes-current.png" alt="导出页面">
+      <strong>导出</strong><br>
+      用于完整形状 JSON 研究的实验性 FH6 shape word 导出/导入工具。
     </td>
   </tr>
 </table>
 
+## 游戏内流程
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-template-ready.png" alt="FH6 模板已准备好">
+      <strong>准备模板</strong><br>
+      打开 FH6 Vinyl Group Editor，加载球形图层模板，并取消分组。
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-import-result.png" alt="FH6 导入结果">
+      <strong>导入 JSON</strong><br>
+      保持编辑器打开，让应用定位可编辑图层表并写入设计。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/app-import-preview.png" alt="应用 JSON 预览">
+      <strong>检查预览</strong><br>
+      JSON 预览适合检查图层，但游戏内结果才是最终参考。
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/fh6-car-applied.png" alt="FH6 车身应用结果">
+      <strong>应用到车辆</strong><br>
+      导入并保存后，像使用其他 FH6 设计一样使用该乙烯基组。
+    </td>
+  </tr>
+</table>
+
+## 快速开始
+
+1. 从 [Releases](https://github.com/Daiivr/Forza-Painter-FH6/releases) 下载 `forza-painter-fh6-v1.8.4.exe`。
+2. 将 EXE 放到普通可写文件夹中，例如 `Desktop\forza-painter-fh6`。
+3. 运行 EXE。如果 Windows 进程权限导致导入失败，请以管理员身份运行。
+4. 在 FH6 中打开 `Create Vinyl Group` / `Vinyl Group Editor`。
+5. 加载球形模板，取消分组，并记下游戏显示的准确图层数。
+6. 在 Forza-Painter FH6 中生成或添加 JSON，选择 FH6 进程，输入模板层数，然后导入。
+
 ## 生成 JSON
 
-1. 进入 `Generate JSON` 页面。
-2. 点击 `Add images`，添加 PNG/JPG/BMP 图片。
-3. 选择品质配置。
-4. 可选：开启 `Use custom settings`，修改输出层数、分辨率、随机样本和变异样本。
-5. 点击底部固定的 `Start generating`。
-6. 等待生成完成，右侧会显示预览，底部会显示日志。
+生成 JSON 页面使用内置 GPU/OpenCL 生成器，把图片转换成 Forza 友好的几何文件。
 
-生成的文件会保存在原图片旁边，例如 `image.500.json`、`image.1000.json`、`image.3000.json`。
+1. 添加一张或多张图片。
+2. 选择质量预设。
+3. 可选：打开 `质量设置`，调整图层数、分辨率、随机样本等高级参数。
+4. 开始生成，等待预览和日志更新。
+5. 使用能适配模板的最高图层 JSON。
 
-同一张图片可能会生成多个 checkpoint JSON。导入时优先使用层数最高、最接近模板层数的 JSON；例如 3000 层模板应优先导入 `image.3000.json` 或最终 `image.json`。如果把 500 层 JSON 导入 3000 层模板，画面会明显发糊。
-
-| 预设 | 输出层数 | 随机样本 | 用途 |
-| --- | ---: | ---: | --- |
-| extremely fast | 500 | 30000 | 快速看构图 |
-| fast | 1000 | 60000 | 快速出可用稿 |
-| balanced | 1800 | 120000 | 默认建议 |
-| slow | 2500 | 220000 | 成品质量，开始进入 200k+ 提升区间 |
-| super slow | 3000 | 350000 | 最高清晰度，耗时很长 |
+生成文件会保存在源图片旁边。一张图片可能会生成 `image.500.json`、`image.1000.json`、`image.3000.json` 等 checkpoint，以及最终的 `image.json`。
 
 ## 导入 JSON
 
-1. 启动 FH6，并保持 `Vinyl Group Editor` 打开。
-2. 加载或创建一个由大量简单 sphere 图层组成的模板。
-3. 把模板 `Ungroup`，并记住游戏里显示的真实层数。
-4. 在软件 `Import` 页面点击 `Refresh`，选择正在运行的 `forzahorizon6.exe`。
-5. 填写游戏里的真实模板层数。
-6. 添加生成好的 `.json`，或者点击 `Use generated JSON`。
-7. 高级地址输入框保持空白，点击 `Import JSON`。
+导入页面会把生成的几何数据写入当前 FH6 Vinyl Group Editor 会话。
 
-FH 需要额外 4 个边界层来正确保存封面和贴车范围。例如：1000 层 JSON 建议使用至少 1004 层模板；3000 层模板实际可导入约 2996 个可绘制图形。
+- FH6 模板在导入前必须取消分组。
+- 应用中输入的图层数必须与游戏完全一致。
+- 导入时保持 FH6 停留在 Vinyl Group Editor。
+- 应用扫描或写入时不要切换菜单。
+- 如果 Windows 阻止进程访问，请以管理员身份重启应用。
 
-## 必须注意
+FH6 需要额外的边界图层才能正确保存和应用边界。例如，1000 层 JSON 应使用至少 1004 层模板；3000 层模板通常约有 2996 层可绘制图层。
 
-- 模板必须已经 Ungroup。
-- 软件里的层数必须和游戏里的层数完全一致。
-- 导入过程中不要切换菜单。
-- 如果重启游戏、重新加载模板、改变模板层数，请用新的正确层数重新导入。
-- 如果 JSON 比模板小，未使用的模板层会被隐藏。
-- 如果 JSON 比模板大，超出的图形会被裁剪。
-- 透明 PNG 的透明背景不会作为可见底色导入。
+## 区域绘制
 
-## 运行文件位置
+区域绘制适用于部分区域需要更多细节的图片。它先生成基础结果，让你选择矩形或椭圆区域，然后只在选中区域投入额外图层。
 
-单文件 EXE 会临时解压内部文件，并把正常运行数据放在 EXE 外部。软件启动日志和 `Tools` 页面会显示具体路径。
+当前工具包括：
 
-EXE 旁边可能出现这些外部文件夹：
+- 第一轮和区域轮次的图层预算。
+- 矩形和椭圆选择。
+- 拖动、缩放、旋转和滚轮控制。
+- 预览与热力图标签页。
+- 轮次历史、剩余图层跟踪和结果 JSON 导出。
 
-- `runtime/`：日志、会话数据和临时文件。
-- `webui-data/`：本地浏览器/UI 缓存。
+## Market
 
-关闭软件后可以删除这些文件夹，用于重置本地运行数据。
+导入页面包含用于 painter6.com 预设的应用内 Market 按钮。你可以浏览设计、预览选中的预设、下载 geometry JSON，并把下载的 JSON 直接加入导入列表。
 
-## 常见问题
+## 导出
 
-- **无法导入 FH6：** 关闭软件，用管理员身份运行 EXE。
-- **GPU/OpenCL 报错：** 更新 NVIDIA/AMD/Intel 显卡驱动。内置生成器使用 OpenCL。
-- **定位不到模板：** 确认你在 Vinyl Group Editor，模板已经 Ungroup，层数填写完全正确，扫描期间没有切换菜单。
-- **导入效果发糊：** 使用更高层数的 JSON，或提高 `Output layers` / `Random samples`。
-- **需要排查问题：** 在软件里点击 `Export detailed log`，把导出的日志附到 issue。
+导出功能仍然是实验性的。它面向导出的或手写的 FH6 type-code JSON，不是普通生成器输出的椭圆几何。
 
-## 资源链接
+- 使用层偏移 `0x7A` 处的 16 位 FH6 shape word。
+- 导出稳定的视觉字段，例如位置、缩放、旋转、倾斜、颜色、蒙版/banner 数据和 shape word。
+- 避免复制 `0xA8` 等易变资源指针。
+- 可用时使用内置 FH6 乙烯基资源进行预览。
 
-- 导入参考视频：https://www.bilibili.com/video/BV1hG5Z6nENZ
-- 内置 GPU 生成器来源/参考：https://github.com/zjl88858/forza-painter-geometrize-gpu
-- 完整更新记录：[CHANGELOG.md](CHANGELOG.md)
+普通生成的 geometry JSON 请使用标准导入页面。
 
-## 更新日志
+## 运行文件夹
 
-这里仅保留带版本号的发布记录。用于软件更新弹窗的完整记录见 [CHANGELOG.md](CHANGELOG.md)。
+单文件 EXE 会临时解压内部文件，并把正常应用数据写在 EXE 旁边：
 
-### v1.7.0 / 2026-06-02
+- `runtime/`：日志、生成预览、区域绘制会话、Market 下载和临时文件。
+- `webui-data/`：本地偏好设置和 FH6 探测/会话缓存。
 
-- 更新软件版本到 `v1.7.0`；发布文件现在使用 `forza-painter-fh6-v1.7.0.exe`。
-- 在 Import 页面加入软件内 Market，可浏览 painter6.com 预设、预览设计、在浏览器打开选中的预设、下载 geometry JSON，并自动加入 Import 页面等待导入。
-- Market 下载现在会复用 `runtime/market-downloads` 中已有的有效 JSON，不再重复下载同一个预设。
-- 已有的 Market JSON 会在可用时根据预设哈希进行验证，复用下载时会显示单独的本地化确认消息。
-- 打开 Market 模态框时切换语言，现在会立即刷新预设详情、数量、空描述、提示消息以及已翻译的 Market 按钮。
-- 改进 Market 搜索，包括只匹配真实标签的严格 `#tag` 搜索。
-- 整理 Generate JSON 的图片选择区域和质量卡片显示，并加入当前选择层数摘要。
-- 给主题弹窗加入更清晰的强调边框，并改进 Windows 上的 topmost 行为。
-- 为新的 Market、图片、质量、弹窗和状态文本补充多语言翻译。
+关闭应用后可以删除这些文件夹来重置本地运行数据。
 
-### v1.6.8 / 2026-05-28
+## 故障排查
 
-- 更新软件版本到 `v1.6.8`；发布文件现在使用 `forza-painter-fh6-v1.6.8.exe`。
-- 合并 GitHub `main` 最新改动，保留椭圆宽高浮点数，提高游戏内导入精度。
-- 在预览区域增加提示：v1.6.8 会优先保证局内效果，预览仅供近似参考。
-- JSON 预览改为超采样渲染，尽量降低浮点尺寸椭圆在预览里的锯齿和劣化。
+- **导入没有开始：** 以管理员身份运行应用，并确认 FH6 编辑器已打开。
+- **找不到模板：** 取消分组，输入准确图层数，并在扫描时留在编辑器中。
+- **结果发糊：** 提高输出图层数和 `Random samples`；超过 `200000` 通常会改善最终清晰度。
+- **预览与 FH6 不同：** 当前 JSON 预览是近似值，因为 FH6 保留了应用预览会简化的小数椭圆尺寸。
+- **GPU/OpenCL 错误：** 更新 NVIDIA、AMD 或 Intel 显卡驱动。
+- **需要调试帮助：** 使用 `导出详细日志`，并在提交 issue 时附上日志。
 
-### v1.6.7 / 2026-05-27
+## 开发
 
-- 更新软件版本到 `v1.6.7`；发布文件现在使用 `forza-painter-fh6-v1.6.7.exe`。
-- 内置 GPU 生成器更新到上游 `canary-26052702`。
-- 将 FH6 导入缩放里的魔法数字改为圆形和矩形基准尺寸常量，方便后续明确调整游戏内圆形基准大小。
-- 改进生成 ETA 估算，避免生成器批量输出或前期慢速阶段导致剩余时间长期严重不准。
+从源码运行主要用于开发和测试：
 
-### v1.6.6 / 2026-05-26
+```powershell
+install_dependencies.bat
+start_app.bat
+```
 
-- 更新软件版本到 `v1.6.6`；发布文件现在使用 `forza-painter-fh6-v1.6.6.exe`。
-- 增加繁体中文 UI 翻译，并改进右上角语言选择器布局。
-- 修复 RGB 图片的 `luma_band` 预处理，预处理图片写入改为更安全的原子写入，并增加几何/颜色数据测试。
-- 单文件 EXE 现在会打包 OpenCV 和 NumPy，确保 release 版也能使用 `luma_band` 预处理。
-- 导入前现在必须填写 FH6 模板层数，避免空层数字段导致难以理解的自动定位或导入失败。
-- 重构核心模块，加入类型化异常和共享工具函数。
+常用项目文件：
 
-### v1.6.5 / 2026-05-25
+- `src/app.py`：桌面 UI 和工作流程。
+- `src/generator_backend.py`：生成器命令与构建集成。
+- `src/import_readiness.py`：导入前检查。
+- `src/region_painter/`：区域绘制工作流模块。
+- `scripts/make_exe_release.ps1`：发布打包脚本。
+- `CHANGELOG.md`：完整版本历史。
 
-- 更新软件版本到 `v1.6.5`；发布文件现在使用 `forza-painter-fh6-v1.6.5.exe`。
-- 内置 GPU 生成器更新到上游 `v1.2-Canary-20260525`。
-- 内置预设默认设置 `forceOpaqueShapes = false`。
-- 降低主程序在生成期间的额外开销：生成器使用清理后的环境变量，文件轮询频率降低，最重预设减少预览 PNG 写入。
-- 修复开启预处理后生成输出追踪使用原图路径的问题。
+## 资源
 
-### v1.6.1 / 2026-05-24
+- Releases: [github.com/Daiivr/Forza-Painter-FH6/releases](https://github.com/Daiivr/Forza-Painter-FH6/releases)
+- 导入演示视频: [bilibili.com/video/BV1hG5Z6nENZ](https://www.bilibili.com/video/BV1hG5Z6nENZ)
+- 内置 GPU 生成器参考: [zjl88858/forza-painter-geometrize-gpu](https://github.com/zjl88858/forza-painter-geometrize-gpu)
+- 完整 changelog: [CHANGELOG.md](CHANGELOG.md)
 
-- 更新软件版本到 `v1.6.1`；发布文件现在使用 `forza-painter-fh6-v1.6.1.exe`。
-- 内置预设默认关闭 `luma_band` 预处理。
-- 导入时不再复用 `webui-data` 里的旧 FH6 会话定位数据，写入前会重新定位当前模板。
-- JSON 预览改为使用稳定的单一路径渲染，避免不同打包环境下椭圆预览出现拉伸错乱。
+## 许可证
 
-### v1.6.0 / 2026-05-24
-
-- 更新软件版本到 `v1.6.0`；发布文件现在使用 `forza-painter-fh6-v1.6.0.exe`。
-- 内置 GPU 生成器更新到上游 `canary-26052401`。
-- 加入上游 `errorGridSize` 预设参数支持。
-- 集成上游透明区域防外溢算法调整。
-- 透明图片最底部大椭圆的生成质量得到显著改善。
-
-### v1.5.4 / 2026-05-23
-
-- 修复高分辨率原图、生成器预览 PNG 和 JSON 预览的缩放显示，预览会按当前预览框等比适配，不再拉伸或只显示局部。
-- 修复 JSON 预览里 type 16 旋转椭圆的绘制方式，Import 页预览不再把椭圆笔触压扁或错误旋转。
-
-### v1.5.3 / 2026-05-22
-
-- 增加适配单文件 EXE 的自定义预设导入、图片/JSON 列表移除、checkpoint 复用、输出命名修复和 Pillow 预览 fallback。
-
-### v1.5.2 / 2026-05-22
-
-- 增加真正的单文件 EXE，普通用户不再需要 Python、`.venv` 或额外 helper 文件。
-- GUI EXE 可用自身的隐藏 helper 模式执行导入和 FH6 内存定位。
-- Tools 页面和启动日志会显示外部运行/缓存文件保存位置。
-
-### v1.5.1 / 2026-05-22
-
-- 修复项目 `.venv` 已存在但其中 Python 缺少 `pip` 时的依赖安装失败问题。
-- 改进源码包启动脚本的缺文件诊断提示。
-
-### v1.5.0 / 2026-05-22
-
-- 内置 GPU/OpenCL 生成器更新到上游 `canary-26052102`。
-- 引入上游 PR #4 的 work-group evaluation 算法，加速 GPU 候选图形评估。
-- 增加启动自动更新检查、根目录 `CHANGELOG.md` 和深色桌面 UI。
-
-### v1.4.1 / 2026-05-21
-
-- FH6 模板自动定位会先后尝试 v1.3 和 v1.4 两套扫描方案。
-- 增加 RTTI vtable fallback，并拉长自动定位等待预算。
-
-### v1.4.0 / 2026-05-21
-
-- 增加“导出详细日志”按钮，导出内容上限为 50000 字符。
-- 改进 FH6 大块可写内存区域的模板自动定位逻辑。
-
-### v1.3.0 / 2026-05-21
-
-- 内置 GPU/OpenCL 生成器更新到上游 `canary-26052101`。
-- 引入上游显卡选择修复，并在生成日志中显示选中的 OpenCL 设备。
-
-### v1.2.0 / 2026-05-20
-
-- 内置 GPU/OpenCL 生成器更新到上游 `canary-26052001`。
-- 内置预设和自定义生成配置会显式写入 `forceOpaqueShapes = true`。
-
-### v1.1.1 / 2026-05-20
-
-- 增加集中版本号管理，统一窗口标题、命令行和发布包名称。
-- 整理仓库目录和发布包脚本。
+请参阅 [LICENSE](LICENSE)、[LICENSE.custom-importer](LICENSE.custom-importer) 和 [LICENSE.kloudys-custom-importer](LICENSE.kloudys-custom-importer)。

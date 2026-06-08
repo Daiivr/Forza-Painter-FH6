@@ -980,9 +980,11 @@ class App:
         self.update_check_started = False
         self.status = StringVar(value=tr(self.lang, "ready"))
         self.progress_text = StringVar(value="")
+        self.progress_percent = StringVar(value="0%")
         self.batch_queue_text = StringVar(value="")
         self.compatibility_text = StringVar(value="")
         self.import_log_status = StringVar(value="")
+        self.import_modal_percent = StringVar(value="0%")
         self.selected_profile = StringVar()
         self.selected_game = StringVar(value="fh6")
         self.selected_pid = StringVar()
@@ -1055,6 +1057,9 @@ class App:
             "region": deque(maxlen=1200),
             "general": deque(maxlen=1200),
         }
+        self.tab_log_progress = {
+            scope: {"value": 0, "text": ""} for scope in self.tab_log_entries
+        }
         self.generate_log_modal = None
         self.generate_modal_log = None
         self.generate_modal_progress = None
@@ -1068,7 +1073,10 @@ class App:
         self.generate_modal_status = StringVar(value="")
         self.generate_modal_percent = StringVar(value="0%")
         self.generate_progress_value = 0
+        self.import_running = False
+        self.full_shape_running = False
         self.import_log_modal = None
+        self.import_log_modal_scope = None
         self.import_modal_log = None
         self.import_modal_progress = None
         self.context_menu = None
@@ -1731,7 +1739,7 @@ class App:
         for key, label_key, glyph in (
             ("generate", "generate_tab", "spark"),
             ("import", "import_tab", "download"),
-            ("full_shape", "full_shape_tab", "spark"),
+            ("full_shape", "full_shape_tab", "upload"),
             ("region", "region_paint_tab", "spark"),
             ("tutorial", "tutorial_tab", "book"),
         ):
@@ -1855,6 +1863,17 @@ class App:
                 fill=color, width=2, capstyle="round", joinstyle="round"))
             ids.append(canvas.create_line(4, 14, 8, 14, fill=color, width=2, capstyle="round"))
             ids.append(canvas.create_line(14, 14, 18, 14, fill=color, width=2, capstyle="round"))
+        elif name == "upload":
+            # Upward arrow leaving an open tray for Export.
+            ids.append(canvas.create_line(11, 12, 11, 3, fill=color, width=2, capstyle="round"))
+            ids.append(canvas.create_line(
+                7, 7, 11, 3, 15, 7,
+                fill=color, width=2, capstyle="round", joinstyle="round"))
+            ids.append(canvas.create_line(
+                4, 14, 4, 18, 18, 18, 18, 14,
+                fill=color, width=2, capstyle="round", joinstyle="round"))
+            ids.append(canvas.create_line(4, 14, 8, 14, fill=color, width=2, capstyle="round"))
+            ids.append(canvas.create_line(14, 14, 18, 14, fill=color, width=2, capstyle="round"))
         elif name == "book":
             # Open book — two pages joined at a central spine.
             ids.append(canvas.create_line(
@@ -1917,6 +1936,12 @@ class App:
         elif glyph == "download":
             d.line(scaled([(11, 3), (11, 12)]), fill=color, width=stroke)
             d.line(scaled([(7, 8), (11, 12), (15, 8)]), fill=color, width=stroke, joint="curve")
+            d.line(scaled([(4, 14), (4, 18), (18, 18), (18, 14)]), fill=color, width=stroke, joint="curve")
+            d.line(scaled([(4, 14), (8, 14)]), fill=color, width=stroke)
+            d.line(scaled([(14, 14), (18, 14)]), fill=color, width=stroke)
+        elif glyph == "upload":
+            d.line(scaled([(11, 12), (11, 3)]), fill=color, width=stroke)
+            d.line(scaled([(7, 7), (11, 3), (15, 7)]), fill=color, width=stroke, joint="curve")
             d.line(scaled([(4, 14), (4, 18), (18, 18), (18, 14)]), fill=color, width=stroke, joint="curve")
             d.line(scaled([(4, 14), (8, 14)]), fill=color, width=stroke)
             d.line(scaled([(14, 14), (18, 14)]), fill=color, width=stroke)
@@ -2221,7 +2246,10 @@ class App:
                 pass
         self.section_frames[key].pack(fill=BOTH, expand=True)
         self.current_section = key
-        self._set_log_area_visible(key not in ("generate", "import", "full_shape"))
+        self._set_log_area_visible(key in ("full_shape", "region"))
+        if self.log_area_visible:
+            self._populate_scoped_log_widget(self.log, self._visible_log_scope())
+            self._refresh_visible_log_progress()
         if hasattr(self, "section_title"):
             self.section_title.config(text=self._section_title_text())
         if hasattr(self, "section_subtitle"):
@@ -2335,7 +2363,7 @@ class App:
         )
 
     # ---------------------------------------------------------------------- card
-    def _card(self, parent, title_key, step=None, side_pack=None, eyebrow=None):
+    def _card(self, parent, title_key, step=None, side_pack=None, eyebrow=None, header_action=None):
         """Returns the content frame inside an elevated card with tinted header + hairline."""
         wrapper = Frame(parent, bg=Theme.BG)
         if side_pack:
@@ -2386,6 +2414,17 @@ class App:
         title_label.after_idle(
             lambda: self._apply_wrap_update(title_block, title_label, title_wrap_state, 180, 4)
         )
+        if header_action:
+            action_key, action_command = header_action
+            self._button(
+                header_inner,
+                action_key,
+                action_command,
+                bg=Theme.PANEL_HEADER,
+                padx=14,
+                pady=4,
+                font=(Theme.FONT_FAMILY, 9, "bold"),
+            ).pack(side=RIGHT, padx=(12, 0))
 
         # Hairline divider between header and body
         Frame(card, bg=Theme.BORDER, height=1).pack(fill=X)
@@ -4065,7 +4104,7 @@ class App:
     def _region_start_first_pass(self):
         self.active_log_scope = "region"
         if not self.region_images:
-            self.log_line(tr(self.lang, "region_no_image"))
+            self.log_line(tr(self.lang, "region_no_image"), scope="region")
             return
         image_path = self.region_images[0]
         profile_label = self.region_selected_profile.get()
@@ -4076,13 +4115,13 @@ class App:
         if setting is None and self.settings:
             setting = self.settings[0]
         if setting is None:
-            self.log_line(tr(self.lang, "log_no_quality_profile"))
+            self.log_line(tr(self.lang, "log_no_quality_profile"), scope="region")
             return
         try:
             total_budget = int(self.region_total_var.get() or 2000)
             first_layers = int(self.region_first_var.get() or 1000)
         except ValueError:
-            self.log_line(tr(self.lang, "region_invalid_budget"))
+            self.log_line(tr(self.lang, "region_invalid_budget"), scope="region")
             return
         output_dir = ROOT / "runtime" / "region-painter" / f"{image_path.stem}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self.region_current_output_dir = str(output_dir)
@@ -4092,7 +4131,8 @@ class App:
         self._region_update_button_states()
         self.region_status.set(tr(self.lang, "running"))
         self.region_progress.set(tr(self.lang, "region_starting_first_pass"))
-        self.log_line(tr(self.lang, "region_first_pass_starting"))
+        self._set_scoped_log_progress("region", 0, tr(self.lang, "region_starting_first_pass"))
+        self.log_line(tr(self.lang, "region_first_pass_starting"), scope="region")
         threading.Thread(
             target=self._region_first_pass_worker,
             args=(image_path, setting, first_layers, output_dir),
@@ -4222,26 +4262,27 @@ class App:
     def _region_start_pass(self):
         self.active_log_scope = "region"
         if self.region_workflow_running:
-            self.log_line(tr(self.lang, "region_already_running"))
+            self.log_line(tr(self.lang, "region_already_running"), scope="region")
             return
         if not self.region_shapes:
-            self.log_line(tr(self.lang, "region_no_mask"))
+            self.log_line(tr(self.lang, "region_no_mask"), scope="region")
             return
         mask = self._region_generate_mask()
         if mask is None:
-            self.log_line(tr(self.lang, "region_mask_failed"))
+            self.log_line(tr(self.lang, "region_mask_failed"), scope="region")
             return
         try:
             region_layers = int(self.region_layers_var.get() or 300)
         except ValueError:
-            self.log_line(tr(self.lang, "region_invalid_region_layers"))
+            self.log_line(tr(self.lang, "region_invalid_region_layers"), scope="region")
             return
         output_dir = Path(self.region_current_output_dir)
         self.region_workflow_running = True
         self._region_update_button_states()
         self.region_status.set(tr(self.lang, "running"))
         self.region_progress.set(tr(self.lang, "region_starting_region_pass"))
-        self.log_line(tr(self.lang, "region_pass_starting"))
+        self._set_scoped_log_progress("region", 0, tr(self.lang, "region_starting_region_pass"))
+        self.log_line(tr(self.lang, "region_pass_starting"), scope="region")
         threading.Thread(
             target=self._region_pass_worker,
             args=(output_dir, region_layers, mask),
@@ -4550,7 +4591,13 @@ class App:
         self.readiness_frame.bind("<Configure>", self._resize_readiness_labels, add="+")
 
         # ----- card 3: JSON files -----
-        card3 = self._card(left, "step_json", step=2, side_pack={"fill": BOTH, "expand": True, "pady": (0, 8)})
+        card3 = self._card(
+            left,
+            "step_json",
+            step=2,
+            side_pack={"fill": BOTH, "expand": True, "pady": (0, 8)},
+            header_action=("open_logs", self.open_import_logs),
+        )
         self._responsive_label(card3, "step_json_hint", anchor="w", justify=LEFT,
                                min_wrap=260, margin=8, fg=Theme.MUTED,
                                font=(Theme.FONT_FAMILY, 9)).pack(fill=X, pady=(0, 10))
@@ -4611,6 +4658,12 @@ class App:
         )
         self.import_preview_label.pack(fill=BOTH, expand=True, padx=1, pady=1)
         self.import_preview_label.bind("<Configure>", self._schedule_preview_refresh)
+
+    def open_import_logs(self):
+        self.active_log_scope = "import"
+        self.import_log_status.set(self.status.get())
+        self._show_import_log_modal("import")
+        self._set_import_modal_running(self.import_running)
 
     def _build_full_shape_tab(self):
         columns = Frame(self.full_shape_tab, bg=Theme.BG)
@@ -4737,7 +4790,10 @@ class App:
         prog_block.pack(side=LEFT, fill=X, expand=True, padx=(24, 12))
         self._label(prog_block, "progress", anchor="w",
                     font=(Theme.FONT_FAMILY, 8, "bold"), fg=Theme.SUBTLE).pack(side=LEFT, padx=(0, 8))
-        self.progress_bar = ttk.Progressbar(prog_block, mode="indeterminate",
+        Label(prog_block, textvariable=self.progress_percent, anchor="e",
+              fg=Theme.ACCENT_SOFT, bg=Theme.BG,
+              font=(Theme.FONT_FAMILY, 9, "bold"), width=4).pack(side=LEFT, padx=(0, 6))
+        self.progress_bar = ttk.Progressbar(prog_block, mode="determinate", maximum=100,
                                             style="App.Horizontal.TProgressbar", length=160)
         self.progress_bar.pack(side=LEFT, padx=(0, 10))
         Label(prog_block, textvariable=self.progress_text, anchor="w",
@@ -4920,21 +4976,27 @@ class App:
         except Exception:
             pass
 
-    def _show_import_log_modal(self):
-        modal_scope = "full_shape" if self._active_log_scope() == "full_shape" or getattr(self, "current_section", None) == "full_shape" else "import"
+    def _show_import_log_modal(self, scope=None):
+        if scope in self.tab_log_entries:
+            modal_scope = scope
+        else:
+            modal_scope = "full_shape" if self._active_log_scope() == "full_shape" or getattr(self, "current_section", None) == "full_shape" else "import"
         if self.import_log_modal is not None:
             try:
                 if self.import_log_modal.winfo_exists():
                     self.import_log_modal.deiconify()
                     self._ensure_window_in_taskbar(self.import_log_modal)
                     self._activate_modal(self.import_log_modal)
+                    self.import_log_modal_scope = modal_scope
                     self._populate_scoped_log_widget(self.import_modal_log, modal_scope)
+                    self._refresh_import_modal_progress()
                     return
             except Exception:
                 pass
 
         top = Toplevel(self.root)
         self.import_log_modal = top
+        self.import_log_modal_scope = modal_scope
         top.withdraw()
         top.title(tr(self.lang, "logs"))
         top.configure(bg=Theme.BORDER)
@@ -4951,6 +5013,7 @@ class App:
         def close_modal():
             self._deactivate_modal(top)
             self.import_log_modal = None
+            self.import_log_modal_scope = None
             self.import_modal_log = None
             self.import_modal_progress = None
             try:
@@ -5000,8 +5063,11 @@ class App:
         prog_block.pack(side=LEFT, fill=X, expand=True, padx=(24, 12))
         self._label(prog_block, "progress", anchor="w",
                     font=(Theme.FONT_FAMILY, 8, "bold"), fg=Theme.SUBTLE).pack(side=LEFT, padx=(0, 8))
+        Label(prog_block, textvariable=self.import_modal_percent, anchor="e",
+              fg=Theme.ACCENT_SOFT, bg=Theme.BG,
+              font=(Theme.FONT_FAMILY, 9, "bold"), width=4).pack(side=LEFT, padx=(0, 6))
         self.import_modal_progress = ttk.Progressbar(
-            prog_block, mode="indeterminate", style="App.Horizontal.TProgressbar", length=180
+            prog_block, mode="determinate", maximum=100, style="App.Horizontal.TProgressbar", length=180
         )
         self.import_modal_progress.pack(side=LEFT, padx=(0, 10))
         self.import_log_status.set(self.status.get())
@@ -5016,6 +5082,7 @@ class App:
         self.import_modal_log.pack(fill=BOTH, expand=True, padx=1, pady=1)
         self._configure_log_text(self.import_modal_log)
         self._populate_scoped_log_widget(self.import_modal_log, modal_scope)
+        self._refresh_import_modal_progress()
         self._apply_dark_theme_recursive(top)
         self._center_toplevel(top, 920, 380)
         top.deiconify()
@@ -5027,12 +5094,35 @@ class App:
         if progress is None:
             return
         try:
-            if running:
-                progress.start(80)
-            else:
-                progress.stop()
+            progress.configure(mode="determinate", maximum=100)
+            self._refresh_import_modal_progress()
         except Exception:
             pass
+
+    def _apply_import_modal_progress(self, value=None, text=None):
+        progress_value = 0
+        if value is not None:
+            try:
+                progress_value = max(0, min(100, int(round(float(value)))))
+            except (TypeError, ValueError):
+                progress_value = 0
+        self.import_modal_percent.set(f"{progress_value}%")
+        if text is not None:
+            clean_text = re.sub(r"^\s*\d{1,3}%\s*[·|-]\s*", "", str(text)).strip()
+            self.import_log_status.set(clean_text or "")
+        progress = self.import_modal_progress
+        if progress is not None:
+            try:
+                progress.configure(mode="determinate", maximum=100)
+                progress["value"] = progress_value
+            except Exception:
+                pass
+
+    def _refresh_import_modal_progress(self):
+        scope = getattr(self, "import_log_modal_scope", None) or "import"
+        progress = self.tab_log_progress.get(scope, {"value": 0, "text": self.status.get()})
+        text = progress.get("text") or self.status.get()
+        self._apply_import_modal_progress(progress.get("value", 0), text)
 
     def _append_import_modal_log(self, timestamp, text, tag):
         widget = self.import_modal_log
@@ -6071,11 +6161,68 @@ class App:
         section = getattr(self, "current_section", None)
         return section if section in self.tab_log_entries else "general"
 
+    def _visible_log_scope(self):
+        section = getattr(self, "current_section", None)
+        return section if section in self.tab_log_entries else "general"
+
     def _record_scoped_log(self, scope, timestamp, text, tag):
         scope = self._active_log_scope(scope)
         entries = self.tab_log_entries.setdefault(scope, deque(maxlen=1200))
         entries.append((timestamp, text, tag))
         return scope
+
+    def _progress_from_text(self, text):
+        raw = str(text or "")
+        for pattern in (
+            r"(?:Generated layer|Saved JSON checkpoint|Writing layer)\s+(\d+)/(\d+)",
+            r"Scanned\s+(\d+)/(\d+)\s+regions",
+            r"Image\s+(\d+)/(\d+):",
+        ):
+            match = re.search(pattern, raw)
+            if not match:
+                continue
+            current = int(match.group(1))
+            total = int(match.group(2))
+            if total > 0:
+                return max(0, min(100, int(round(100 * current / total))))
+        return None
+
+    def _apply_log_progress(self, value=None, text=None):
+        progress = 0
+        if value is not None:
+            try:
+                progress = max(0, min(100, int(round(float(value)))))
+            except (TypeError, ValueError):
+                progress = 0
+        self.progress_percent.set(f"{progress}%")
+        if text is not None:
+            clean_text = re.sub(r"^\s*\d{1,3}%\s*[·|-]\s*", "", str(text)).strip()
+            self.progress_text.set(clean_text)
+        if hasattr(self, "progress_bar"):
+            try:
+                self.progress_bar.configure(mode="determinate", maximum=100)
+                self.progress_bar["value"] = progress
+            except Exception:
+                pass
+
+    def _set_scoped_log_progress(self, scope, value=None, text=None):
+        scope = self._active_log_scope(scope)
+        progress = self.tab_log_progress.setdefault(scope, {"value": 0, "text": ""})
+        if value is not None:
+            try:
+                progress["value"] = max(0, min(100, int(round(float(value)))))
+            except (TypeError, ValueError):
+                pass
+        if text is not None:
+            progress["text"] = str(text)
+        if self.log_area_visible and scope == self._visible_log_scope():
+            self._apply_log_progress(progress.get("value", 0), progress.get("text", ""))
+        if scope == getattr(self, "import_log_modal_scope", None):
+            self._apply_import_modal_progress(progress.get("value", 0), progress.get("text", ""))
+
+    def _refresh_visible_log_progress(self):
+        progress = self.tab_log_progress.get(self._visible_log_scope(), {"value": 0, "text": ""})
+        self._apply_log_progress(progress.get("value", 0), progress.get("text", ""))
 
     def _populate_scoped_log_widget(self, widget, scope):
         if widget is None:
@@ -6096,6 +6243,16 @@ class App:
         text = str(message)
         msg_tag = self._log_message_tag(text)
         resolved_scope = self._record_scoped_log(scope, timestamp, text, msg_tag) if index == END else self._active_log_scope(scope)
+        if index == END:
+            progress = self._progress_from_text(text)
+            if progress is not None:
+                self._set_scoped_log_progress(resolved_scope, progress, text)
+            if resolved_scope in ("import", "full_shape", "region") and resolved_scope == getattr(self, "import_log_modal_scope", None):
+                self._append_import_modal_log(timestamp, text, msg_tag)
+            if resolved_scope == "generate":
+                self._append_generate_modal_log(timestamp, text, msg_tag)
+            if (not self.log_area_visible) or resolved_scope != self._visible_log_scope():
+                return None, None
         mark = "_log_insert_cursor"
         try:
             start = self.log.index(index)
@@ -6107,24 +6264,15 @@ class App:
             self.log.insert(mark, f"{text}\n", message_tags)
             end = self.log.index(mark)
             self.log.mark_unset(mark)
-            if index == END:
-                if resolved_scope == "import" or resolved_scope == "full_shape":
-                    self._append_import_modal_log(timestamp, text, msg_tag)
-                if resolved_scope == "generate":
-                    self._append_generate_modal_log(timestamp, text, msg_tag)
             return start, end
         except Exception:
             self.log.insert(END, f"[{timestamp}] {text}\n")
-            if index == END:
-                if resolved_scope == "import" or resolved_scope == "full_shape":
-                    self._append_import_modal_log(timestamp, text, msg_tag)
-                if resolved_scope == "generate":
-                    self._append_generate_modal_log(timestamp, text, msg_tag)
             return None, None
 
     def log_line(self, message, scope=None):
         self._insert_log_entry(message, scope=scope)
-        self.log.see(END)
+        if self.log_area_visible:
+            self.log.see(END)
 
     def _record_detail(self, message):
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
@@ -6232,11 +6380,11 @@ class App:
     def export_full_shape_report(self):
         report_dir_text = str(self.full_shape_last_report_dir.get() or "").strip()
         if not report_dir_text:
-            self.log_line(tr(self.lang, "full_shape_no_report"))
+            self.log_line(tr(self.lang, "full_shape_no_report"), scope="full_shape")
             return
         report_dir = Path(report_dir_text)
         if not report_dir.exists():
-            self.log_line(tr(self.lang, "full_shape_no_report"))
+            self.log_line(tr(self.lang, "full_shape_no_report"), scope="full_shape")
             return
         output_path = filedialog.asksaveasfilename(
             title=tr(self.lang, "export_full_shape_report"),
@@ -6253,16 +6401,14 @@ class App:
                     if path.is_file():
                         archive.write(path, path.relative_to(report_dir))
         except Exception as exc:
-            self.log_line(f"{tr(self.lang, 'full_shape_report_export_failed')}: {exc}")
+            self.log_line(f"{tr(self.lang, 'full_shape_report_export_failed')}: {exc}", scope="full_shape")
             return
-        self.log_line(tr(self.lang, "full_shape_report_exported").format(path=output_path))
+        self.log_line(tr(self.lang, "full_shape_report_exported").format(path=output_path), scope="full_shape")
 
     def show_full_shape_failure_prompt(self, detail):
         message = tr(self.lang, "full_shape_failure_prompt").format(detail=detail)
-        try:
-            messagebox.showwarning(tr(self.lang, "full_shape_failed"), message)
-        except Exception:
-            self.log_line(message)
+        self.log_line(message, scope="full_shape")
+        self._show_themed_alert(tr(self.lang, "full_shape_failed"), message)
 
     def start_update_check(self):
         if self.closed or self.update_check_started:
@@ -7895,6 +8041,7 @@ class App:
         self.shutdown_event.clear()
         self._reset_generation_eta()
         self.progress_text.set("")
+        self._set_scoped_log_progress("generate", 0, tr(self.lang, "generation_progress_idle"))
         self.generate_progress_value = 0
         self.generate_modal_status.set(tr(self.lang, "generation_progress_idle"))
         self.generate_modal_percent.set("0%")
@@ -8129,9 +8276,9 @@ class App:
         self.show_json_preview(selected_path)
         try:
             count = typecode_shape_count(selected_path)
-            self.log_line(f"{tr(self.lang, 'full_shape_selected_json')} {selected_path.name} ({count} shapes)")
+            self.log_line(f"{tr(self.lang, 'full_shape_selected_json')} {selected_path.name} ({count} shapes)", scope="full_shape")
         except Exception as exc:
-            self.log_line(f"{tr(self.lang, 'full_shape_invalid_json')}: {exc}")
+            self.log_line(f"{tr(self.lang, 'full_shape_invalid_json')}: {exc}", scope="full_shape")
 
     def open_full_shape_folder(self):
         folder = Path(self.full_shape_last_output_dir.get() or FULL_SHAPE_ROOT)
@@ -8142,10 +8289,10 @@ class App:
         try:
             count = int(str(self.full_shape_count.get()).strip())
         except (TypeError, ValueError):
-            self.log_line(tr(self.lang, "full_shape_count_required"))
+            self.log_line(tr(self.lang, "full_shape_count_required"), scope="full_shape")
             return None
         if count <= 0:
-            self.log_line(tr(self.lang, "full_shape_count_required"))
+            self.log_line(tr(self.lang, "full_shape_count_required"), scope="full_shape")
             return None
         return count
 
@@ -8168,22 +8315,22 @@ class App:
             return
         json_path = Path(self.full_shape_json_path.get().strip())
         if not json_path.exists():
-            self.log_line(tr(self.lang, "full_shape_no_json"))
+            self.log_line(tr(self.lang, "full_shape_no_json"), scope="full_shape")
             return
         try:
             shape_count = typecode_shape_count(json_path)
         except Exception as exc:
-            self.log_line(f"{tr(self.lang, 'full_shape_invalid_json')}: {exc}")
+            self.log_line(f"{tr(self.lang, 'full_shape_invalid_json')}: {exc}", scope="full_shape")
             return
         if shape_count <= 0:
-            self.log_line(tr(self.lang, "full_shape_no_shapes"))
+            self.log_line(tr(self.lang, "full_shape_no_shapes"), scope="full_shape")
             return
         if shape_count > template_count:
-            self.log_line(f"{tr(self.lang, 'full_shape_too_many_shapes')} JSON={shape_count}, template={template_count}")
+            self.log_line(f"{tr(self.lang, 'full_shape_too_many_shapes')} JSON={shape_count}, template={template_count}", scope="full_shape")
             return
-        self._show_import_log_modal()
+        self.full_shape_running = True
+        self._set_scoped_log_progress("full_shape", 0, tr(self.lang, "full_shape_importing"))
         self.status.set(tr(self.lang, "running"))
-        self._set_import_modal_running(True)
         threading.Thread(
             target=self._full_shape_import_worker,
             args=(pid, template_count, shape_count, json_path, self.full_shape_clear_unused.get() == "1"),
@@ -8214,9 +8361,9 @@ class App:
         output_path = Path(output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         self.full_shape_last_output_dir.set(str(output_path.parent))
-        self._show_import_log_modal()
+        self.full_shape_running = True
+        self._set_scoped_log_progress("full_shape", 0, tr(self.lang, "full_shape_exporting"))
         self.status.set(tr(self.lang, "running"))
-        self._set_import_modal_running(True)
         threading.Thread(target=self._full_shape_export_worker, args=(pid, template_count, output_path), daemon=True).start()
 
     def _candidate_shape_count(self, candidate, shape_byte):
@@ -8255,7 +8402,7 @@ class App:
             "--report-layers", "40",
             "--out-dir", run_dir,
         ]
-        self.queue.put(("log", tr(self.lang, "full_shape_probe_wait")))
+        self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_probe_wait"))))
         code = self.run_subprocess(cmd, timeout=180)
         if code != 0:
             raise RuntimeError("full-shape probe did not complete")
@@ -8289,9 +8436,12 @@ class App:
         index, group, table, valid_ptrs, sample_ok, circle_count = selected
         circle_suffix = f", circle_template={circle_count}/{template_count}" if require_circle_template else ""
         self.queue.put((
-            "log",
-            f"FH6 full-shape group located: candidate #{index}, group={group}, table={table}, "
-            f"layers={template_count}, valid_ptrs={valid_ptrs}, sample_ok={sample_ok}{circle_suffix}",
+            "scoped_log",
+            (
+                "full_shape",
+                f"FH6 full-shape group located: candidate #{index}, group={group}, table={table}, "
+                f"layers={template_count}, valid_ptrs={valid_ptrs}, sample_ok={sample_ok}{circle_suffix}",
+            ),
         ))
         return group, table, probe_report
 
@@ -8301,7 +8451,10 @@ class App:
         backup_path = run_dir / "import-backup.json"
         import_report = run_dir / "import-report.json"
         try:
-            self.queue.put(("log", f"{tr(self.lang, 'full_shape_importing')} shapes={shape_count}, template={template_count}"))
+            self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_import_start").format(
+                shapes=shape_count,
+                template=template_count,
+            ))))
             _group, table, _probe_report = self._locate_full_shape_group(pid, template_count, run_dir, "import-template")
             import_cmd = [
                 *helper_command("fh6_typecode_import"),
@@ -8319,7 +8472,7 @@ class App:
                 import_cmd.append("--clear-unused")
             code = self.run_subprocess(import_cmd, timeout=360)
             if code != 0:
-                self.queue.put(("full_shape_failed_prompt", "import helper exited with an error"))
+                self.queue.put(("full_shape_failed_prompt", tr(self.lang, "full_shape_import_helper_error")))
                 self.queue.put(("status", tr(self.lang, "failed")))
                 return
             report = json.loads(import_report.read_text(encoding="utf-8"))
@@ -8327,18 +8480,18 @@ class App:
             failures = int(report.get("failure_count") or 0)
             unsupported = int(report.get("unsupported_shape_count") or 0)
             if unsupported:
-                self.queue.put(("log", f"Unsupported full-shape rows skipped: {unsupported}"))
+                self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_unsupported_skipped").format(count=unsupported))))
             if failures or imported <= 0:
                 detail = f"imported={imported}, failures={failures}"
-                self.queue.put(("log", f"Full-shape import did not finish cleanly: {detail}"))
+                self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_import_incomplete").format(detail=detail))))
                 self.queue.put(("full_shape_failed_prompt", detail))
                 self.queue.put(("status", tr(self.lang, "failed")))
                 return
-            self.queue.put(("log", tr(self.lang, "full_shape_import_done").format(count=imported)))
+            self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_import_done").format(count=imported))))
             self.queue.put(("market_imported_path", str(json_path)))
             self.queue.put(("status", tr(self.lang, "done")))
         except Exception as exc:
-            self.queue.put(("log", f"{tr(self.lang, 'full_shape_failed')}: {exc}"))
+            self.queue.put(("scoped_log", ("full_shape", f"{tr(self.lang, 'full_shape_failed')}: {exc}")))
             self.queue.put(("full_shape_failed_prompt", str(exc)))
             self.queue.put(("status", tr(self.lang, "failed")))
         finally:
@@ -8363,14 +8516,14 @@ class App:
             ]
             code = self.run_subprocess(export_cmd, timeout=360)
             if code != 0:
-                prompt_detail = "export helper exited with an error"
+                prompt_detail = tr(self.lang, "full_shape_export_helper_error")
                 if export_report.exists():
                     try:
                         report = json.loads(export_report.read_text(encoding="utf-8"))
                         reasons = report.get("validation_reasons") or []
                         if reasons:
                             prompt_detail = "; ".join(str(reason) for reason in reasons[:4])
-                            self.queue.put(("log", "Export validation: " + prompt_detail))
+                            self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_export_validation").format(detail=prompt_detail))))
                     except Exception:
                         pass
                 self.queue.put(("full_shape_failed_prompt", prompt_detail))
@@ -8380,21 +8533,22 @@ class App:
             exported = int(report.get("exported_shape_count") or 0)
             failures = int(report.get("failure_count") or 0)
             if failures:
-                self.queue.put(("log", f"Export warning: {failures} unreadable layer(s), see report."))
+                self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_export_warning").format(count=failures))))
             self.queue.put(("full_shape_json_path", output_path))
             self.queue.put(("full_shape_output_dir", output_path.parent))
-            self.queue.put(("log", tr(self.lang, "full_shape_export_done").format(count=exported, path=output_path)))
+            self.queue.put(("scoped_log", ("full_shape", tr(self.lang, "full_shape_export_done").format(count=exported, path=output_path))))
             self.queue.put(("status", tr(self.lang, "done")))
         except Exception as exc:
-            self.queue.put(("log", f"{tr(self.lang, 'full_shape_failed')}: {exc}"))
+            self.queue.put(("scoped_log", ("full_shape", f"{tr(self.lang, 'full_shape_failed')}: {exc}")))
             self.queue.put(("full_shape_failed_prompt", str(exc)))
             self.queue.put(("status", tr(self.lang, "failed")))
         finally:
             self.queue.put(("import_done", None))
 
     def run_subprocess(self, cmd, timeout=None):
+        log_scope = self._active_log_scope()
         self._record_detail(f"HELPER COMMAND: {self._format_command(cmd)}")
-        self.queue.put(("log", self._friendly_command_name(cmd)))
+        self.queue.put(("scoped_log", (log_scope, self._friendly_command_name(cmd))))
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         env = os.environ.copy()
         env.update({"FORZA_PAINTER_NO_ELEVATE": "1", "FORZA_PAINTER_NO_PAUSE": "1"})
@@ -8424,26 +8578,34 @@ class App:
                     return 130
                 line = proc.stdout.readline()
                 if line:
-                    self._record_detail(f"HELPER RAW: {line.rstrip()}")
-                    friendly = self._friendly_subprocess_line(line.rstrip())
+                    raw_line = line.rstrip()
+                    self._record_detail(f"HELPER RAW: {raw_line}")
+                    friendly = self._friendly_subprocess_line(raw_line)
                     if friendly:
-                        self.queue.put(("log", friendly))
+                        progress = self._progress_from_text(raw_line)
+                        if progress is not None:
+                            self.queue.put(("scoped_progress", (log_scope, progress, friendly)))
+                        self.queue.put(("scoped_log", (log_scope, friendly)))
                 if proc.poll() is not None:
                     break
                 if timeout and time.time() - started > timeout:
                     self._terminate_process(proc)
                     self._record_detail(f"HELPER EXIT: 124 timeout after {timeout} seconds")
-                    self.queue.put(("log", tr(self.lang, "log_timed_out").format(seconds=timeout)))
+                    self.queue.put(("scoped_log", (log_scope, tr(self.lang, "log_timed_out").format(seconds=timeout))))
                     return 124
                 time.sleep(0.05)
             if self.shutdown_event.is_set():
                 self._record_detail("HELPER EXIT: 130 stopped after process exit")
                 return 130
             for line in proc.stdout.read().splitlines():
-                self._record_detail(f"HELPER RAW: {line.rstrip()}")
-                friendly = self._friendly_subprocess_line(line.rstrip())
+                raw_line = line.rstrip()
+                self._record_detail(f"HELPER RAW: {raw_line}")
+                friendly = self._friendly_subprocess_line(raw_line)
                 if friendly:
-                    self.queue.put(("log", friendly))
+                    progress = self._progress_from_text(raw_line)
+                    if progress is not None:
+                        self.queue.put(("scoped_progress", (log_scope, progress, friendly)))
+                    self.queue.put(("scoped_log", (log_scope, friendly)))
             self._record_detail(f"HELPER EXIT: {proc.returncode}")
             return proc.returncode
         finally:
@@ -8522,10 +8684,44 @@ class App:
         return raw
 
     def _localize_subprocess_line(self, raw):
+        raw = re.sub(r"^\[\d{2}:\d{2}:\d{2}\]\s*", "", raw)
         match = re.match(r"(.+?) detected as (.+?) \(pid (\d+)\)$", raw)
         if match:
             game, process, pid = match.groups()
             return tr(self.lang, "log_detected_process").format(game=game, process=process, pid=pid)
+        match = re.match(r"Opening pid=(\d+) (.+)$", raw)
+        if match:
+            pid, process = match.groups()
+            return tr(self.lang, "full_shape_opening_process").format(pid=pid, process=process)
+        match = re.match(r"Scanned (\d+)/(\d+) regions, ([\d.]+) MB, candidates=(\d+)$", raw)
+        if match:
+            current, total, mb, candidates = match.groups()
+            return tr(self.lang, "full_shape_scan_progress").format(
+                current=current,
+                total=total,
+                mb=mb,
+                candidates=candidates,
+            )
+        match = re.match(r"Scan complete: ([\d.]+) MB, candidates=(\d+)$", raw)
+        if match:
+            mb, candidates = match.groups()
+            return tr(self.lang, "full_shape_scan_complete").format(mb=mb, candidates=candidates)
+        match = re.match(r"Wrote (.+)$", raw)
+        if match:
+            return tr(self.lang, "full_shape_probe_written").format(path=match.group(1))
+        match = re.match(r"Exported (\d+) layer\(s\) to (.+)$", raw)
+        if match:
+            count, path = match.groups()
+            return tr(self.lang, "full_shape_exported_layers").format(count=count, path=path)
+        match = re.match(r"Report: (.+)$", raw)
+        if match:
+            return tr(self.lang, "full_shape_report_path").format(path=match.group(1))
+        match = re.match(r"Failures: (\d+) unreadable layer\(s\)$", raw)
+        if match:
+            return tr(self.lang, "full_shape_failures").format(count=match.group(1))
+        match = re.match(r"Validation details: (.+)$", raw)
+        if match:
+            return tr(self.lang, "full_shape_validation_details").format(detail=match.group(1))
         match = re.match(r"Manual (?:FH6 )?layer count address 0x([0-9a-fA-F]+); using template layer count (\d+)$", raw)
         if match:
             address, count = match.groups()
@@ -8614,12 +8810,16 @@ class App:
 
     def start_import(self):
         self.active_log_scope = "import"
+        alert_title = tr(self.lang, "import_tab")
+        if self.import_running:
+            self.log_line(tr(self.lang, "import_already_running"), scope="import")
+            self._show_themed_alert(alert_title, tr(self.lang, "import_already_running"))
+            return
         # Validate inputs BEFORE opening the modal. Opening the modal disables the
         # root window on Windows; if validation fails and the modal is then closed,
         # the OS leaves the root briefly unresponsive. Keep the modal closed until
         # we actually have work to run.  Since the log area is hidden on the import
         # tab, surface the error with a native alert so the user knows what to fix.
-        alert_title = tr(self.lang, "import_tab")
         paths = self._json_paths_for_import()
         if not paths:
             self.log_line(tr(self.lang, "log_no_json_files"))
@@ -8672,7 +8872,9 @@ class App:
                 return
             self.full_shape_count.set(str(template_count))
             self.full_shape_json_path.set(str(json_path))
-            self._show_import_log_modal()
+            self.import_running = True
+            self._set_scoped_log_progress("import", 0, tr(self.lang, "importing"))
+            self._show_import_log_modal("import")
             self.status.set(tr(self.lang, "running"))
             self._set_import_modal_running(True)
             threading.Thread(
@@ -8682,7 +8884,9 @@ class App:
             ).start()
             return
         # All checks passed — now it's safe to open the import log modal.
-        self._show_import_log_modal()
+        self.import_running = True
+        self._set_scoped_log_progress("import", 0, tr(self.lang, "importing"))
+        self._show_import_log_modal("import")
         self.status.set(tr(self.lang, "running"))
         self._set_import_modal_running(True)
         threading.Thread(target=self._import_worker, args=(pid, paths), daemon=True).start()
@@ -8830,13 +9034,30 @@ class App:
                 break
             if kind == "log":
                 self.log_line(payload)
+            elif kind == "scoped_log":
+                scope, message = payload
+                self.log_line(message, scope=scope)
             elif kind == "progress":
-                self.progress_text.set(payload)
+                self._set_scoped_log_progress(
+                    self._active_log_scope(),
+                    self._progress_from_text(payload),
+                    payload,
+                )
+            elif kind == "scoped_progress":
+                scope, value, text = payload
+                self._set_scoped_log_progress(scope, value, text)
             elif kind == "status":
                 self.status.set(payload)
                 if getattr(self, "generate_log_modal", None) is not None:
                     self._set_generate_modal_progress(self.generate_progress_value, payload)
             elif kind == "import_done":
+                done_scope = self.active_log_scope if self.active_log_scope in ("import", "full_shape") else None
+                if done_scope:
+                    status_text = self.status.get()
+                    progress_value = 100 if status_text == tr(self.lang, "done") else None
+                    self._set_scoped_log_progress(done_scope, progress_value, status_text)
+                self.import_running = False
+                self.full_shape_running = False
                 self._set_import_modal_running(False)
                 self.import_log_status.set(self.status.get())
                 if self.active_log_scope in ("import", "full_shape"):
@@ -8856,7 +9077,7 @@ class App:
                     except Exception:
                         pass
                 if stopped and not self.closed:
-                    self.progress_text.set(tr(self.lang, "generation_stopped"))
+                    self._set_scoped_log_progress("generate", self.generate_progress_value, tr(self.lang, "generation_stopped"))
                     self.status.set(tr(self.lang, "stopped"))
                     self._set_generate_modal_progress(self.generate_progress_value, tr(self.lang, "generation_stopped"))
                     self.log_line(tr(self.lang, "generation_stopped"))
@@ -8864,8 +9085,10 @@ class App:
                     status_text = self.status.get()
                     if status_text == tr(self.lang, "done"):
                         self._set_generate_modal_progress(100, tr(self.lang, "generation_progress_complete"))
+                        self._set_scoped_log_progress("generate", 100, tr(self.lang, "generation_progress_complete"))
                     elif status_text == tr(self.lang, "failed"):
                         self._set_generate_modal_progress(self.generate_progress_value, tr(self.lang, "generation_progress_failed"))
+                        self._set_scoped_log_progress("generate", self.generate_progress_value, tr(self.lang, "generation_progress_failed"))
                 if self.active_log_scope == "generate":
                     self.active_log_scope = None
             elif kind == "preview":
@@ -8889,6 +9112,7 @@ class App:
                 self._set_generate_modal_preview_shadow(payload)
             elif kind == "generation_progress":
                 self._set_generate_modal_progress(payload.get("value"), payload.get("text"))
+                self._set_scoped_log_progress("generate", payload.get("value"), payload.get("text"))
             elif kind == "render_lists":
                 self._render_lists()
             elif kind == "batch_state":
@@ -8958,7 +9182,9 @@ class App:
             elif kind == "region_log":
                 self.log_line(self._localize_region_line(payload), scope="region")
             elif kind == "region_progress":
-                self.region_progress.set(self._localize_region_line(payload))
+                localized = self._localize_region_line(payload)
+                self.region_progress.set(localized)
+                self._set_scoped_log_progress("region", self._progress_from_text(payload), localized)
             elif kind == "region_preview":
                 try:
                     self._region_display_preview(Path(payload))
@@ -8966,17 +9192,24 @@ class App:
                     pass
             elif kind == "region_status":
                 self.region_status.set(payload)
+                if getattr(self, "import_log_modal_scope", None) == "region":
+                    self.import_log_status.set(self.region_status.get())
                 self.region_workflow_running = False
                 self._region_update_button_states()
             elif kind == "region_done":
                 self.region_workflow_running = False
                 self.shutdown_event.clear()
+                if self.active_log_scope == "region":
+                    self.active_log_scope = None
                 result = payload or {}
                 if result.get("ok"):
                     self.region_status.set(tr(self.lang, "done"))
+                    if getattr(self, "import_log_modal_scope", None) == "region":
+                        self.import_log_status.set(self.region_status.get())
                     self.region_progress.set(tr(self.lang, "region_progress_idle"))
                     if result.get("new_total"):
                         self.region_progress.set(tr(self.lang, "region_total_layers_done").format(total=result["new_total"]))
+                    self._set_scoped_log_progress("region", 100, self.region_progress.get())
                     pass_label = tr(self.lang, "region_pass_complete")
                     if self.region_current_output_dir:
                         try:
@@ -9020,8 +9253,11 @@ class App:
                                 self.region_tab_heatmap_btn.config(fg=Theme.TEXT, cursor="hand2")
                 else:
                     self.region_status.set(tr(self.lang, "failed"))
+                    if getattr(self, "import_log_modal_scope", None) == "region":
+                        self.import_log_status.set(self.region_status.get())
                     error = self._localize_region_line(result.get("error", tr(self.lang, "unknown_error")))
                     self.region_progress.set(error)
+                    self._set_scoped_log_progress("region", None, error)
                     self.log_line(tr(self.lang, "region_failed_detail").format(error=error), scope="region")
                 self._region_update_button_states()
             elif kind == "region_canvas_update":
